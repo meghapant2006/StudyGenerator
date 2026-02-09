@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Generator - AI-Powered Multiple Choice Exams</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <h1>📚 Exam Generator</h1>
+            <p>Generate AI-powered exams from your PDF documents</p>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="container">
+        <!-- Step 1: Upload PDF -->
+        <section id="upload-section" class="section">
+            <h2>Step 1: Upload PDF Document</h2>
+            <div class="upload-area">
+                <input type="file" id="pdf-upload" accept=".pdf" />
+                <label for="pdf-upload" class="upload-label">
+                    <span class="upload-icon">📄</span>
+                    <span>Choose PDF file or drag & drop</span>
+                </label>
+                <div id="upload-status" class="status-message"></div>
+            </div>
+            <div id="pdf-info" class="pdf-info hidden"></div>
+        </section>
+
+        <!-- Step 2: Configure Exam -->
+        <section id="config-section" class="section hidden">
+            <h2>Step 2: Configure Your Exam</h2>
+            <div class="config-form">
+                <div class="form-group">
+                    <label for="num-questions">Number of Questions:</label>
+                    <input type="number" id="num-questions" min="1" max="50" value="10" />
+                    <span class="help-text">Choose between 1 and 50 questions</span>
+                </div>
+                <div class="form-group">
+                    <label for="difficulty">Difficulty Level:</label>
+                    <select id="difficulty">
+                        <option value="easy">Easy</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="hard">Hard</option>
+                    </select>
+                </div>
+                <button id="generate-btn" class="btn btn-primary">Generate Exam</button>
+                <div id="generation-status" class="status-message"></div>
+            </div>
+        </section>
+
+        <!-- Step 3: Take Exam -->
+        <section id="exam-section" class="section hidden">
+            <div class="exam-header">
+                <h2 id="exam-title">Your Exam</h2>
+                <div class="exam-meta">
+                    <span id="question-counter">Question 1 of 10</span>
+                    <span id="timer">Time: 00:00</span>
+                </div>
+            </div>
+            
+            <div id="questions-container" class="questions-container"></div>
+            
+            <div class="exam-controls">
+                <button id="submit-exam-btn" class="btn btn-success">Submit Exam</button>
+            </div>
+        </section>
+
+        <!-- Step 4: Results -->
+        <section id="results-section" class="section hidden">
+            <h2>Exam Results</h2>
+            <div class="results-summary">
+                <div class="score-display">
+                    <div class="score-circle">
+                        <span id="score-percentage">0%</span>
+                    </div>
+                    <p id="score-text">Great job!</p>
+                </div>
+                <div class="results-stats">
+                    <div class="stat">
+                        <span class="stat-label">Correct Answers:</span>
+                        <span id="correct-count" class="stat-value">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Total Questions:</span>
+                        <span id="total-questions" class="stat-value">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Time Taken:</span>
+                        <span id="time-taken" class="stat-value">0:00</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="results-details">
+                <h3>Question Review</h3>
+                <div id="results-container"></div>
+            </div>
+
+            <div class="results-actions">
+                <button id="new-exam-btn" class="btn btn-primary">Generate New Exam</button>
+                <button id="review-attempts-btn" class="btn btn-secondary">View Past Attempts</button>
+            </div>
+        </section>
+
+        <!-- Past Attempts -->
+        <section id="attempts-section" class="section hidden">
+            <h2>Past Exam Attempts</h2>
+            <button id="back-to-results-btn" class="btn btn-secondary">← Back to Results</button>
+            <div id="attempts-container" class="attempts-container"></div>
+        </section>
+    </main>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="spinner"></div>
+        <p id="loading-message">Processing...</p>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>Built with Python, Flask, PyMuPDF, and OpenAI • Ready for desktop deployment with Electron</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
