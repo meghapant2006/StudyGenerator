@@ -3,128 +3,697 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Exam Generator - AI-Powered Multiple Choice Exams</title>
+    <title>StudyWise | AI Exam Generator & Assessment Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <!-- Header -->
-    <header class="header">
-        <div class="container">
-            <h1>📚 Exam Generator</h1>
-            <p>Generate AI-powered exams from your PDF documents</p>
-        </div>
-    </header>
-
-    <!-- Main Container -->
-    <main class="container">
-        <!-- Step 1: Upload PDF -->
-        <section id="upload-section" class="section">
-            <h2>Step 1: Upload PDF Document</h2>
-            <div class="upload-area">
-                <input type="file" id="pdf-upload" accept=".pdf" />
-                <label for="pdf-upload" class="upload-label">
-                    <span class="upload-icon">📄</span>
-                    <span>Choose PDF file or drag & drop</span>
-                </label>
-                <div id="upload-status" class="status-message"></div>
+    <!-- Top Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand" onclick="appState.navigateTo('dashboard')">
+                <div class="brand-logo">⚡</div>
+                <div class="brand-text">
+                    <span class="brand-title">StudyWise</span>
+                    <span class="brand-subtitle">AI Exam Generator</span>
+                </div>
             </div>
-            <div id="pdf-info" class="pdf-info hidden"></div>
+
+            <div class="nav-menu">
+                <button class="nav-link active" data-view="dashboard">
+                    <span class="nav-icon">📊</span> Dashboard
+                </button>
+                <button class="nav-link" data-view="wizard">
+                    <span class="nav-icon">✨</span> Create Exam
+                </button>
+                <button class="nav-link" data-view="editor">
+                    <span class="nav-icon">📝</span> Question Bank
+                </button>
+                <button class="nav-link" data-view="player">
+                    <span class="nav-icon">🎯</span> Take Exam
+                </button>
+                <button class="nav-link" data-view="export">
+                    <span class="nav-icon">📥</span> Export Hub
+                </button>
+            </div>
+
+            <div class="nav-actions">
+                <button id="provider-badge" class="badge-provider" onclick="appState.openSettings()">
+                    <span class="status-dot"></span>
+                    <span id="provider-label">Demo Engine</span>
+                </button>
+                <button class="btn-icon" title="Settings & API Keys" onclick="appState.openSettings()">
+                    ⚙️
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Application Container -->
+    <main class="app-main">
+
+        <!-- ================= VIEW 1: DASHBOARD ================= -->
+        <section id="view-dashboard" class="app-view">
+            <div class="view-header">
+                <div>
+                    <h1 class="view-title">Assessment Dashboard</h1>
+                    <p class="view-desc">Create, manage, grade, and export academic exams powered by AI.</p>
+                </div>
+                <button class="btn btn-primary" onclick="appState.navigateTo('wizard')">
+                    <span>➕</span> Create New Exam
+                </button>
+            </div>
+
+            <!-- Stats Overview Cards -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon bg-indigo">📚</div>
+                    <div class="stat-data">
+                        <span class="stat-num" id="stat-total-exams">0</span>
+                        <span class="stat-label">Total Exams</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon bg-emerald">❓</div>
+                    <div class="stat-data">
+                        <span class="stat-num" id="stat-total-questions">0</span>
+                        <span class="stat-label">Questions Generated</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon bg-amber">📝</div>
+                    <div class="stat-data">
+                        <span class="stat-num" id="stat-total-attempts">0</span>
+                        <span class="stat-label">Student Attempts</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon bg-purple">🎯</div>
+                    <div class="stat-data">
+                        <span class="stat-num" id="stat-avg-score">0%</span>
+                        <span class="stat-label">Average Score</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Action Banners -->
+            <div class="action-banners-grid">
+                <div class="action-banner" onclick="appState.startWizardWithSource('pdf')">
+                    <div class="banner-icon">📄</div>
+                    <div class="banner-content">
+                        <h3>From PDF or Document</h3>
+                        <p>Extract syllabus or textbook chapters with intelligent OCR text extraction.</p>
+                    </div>
+                    <span class="banner-arrow">→</span>
+                </div>
+                <div class="action-banner" onclick="appState.startWizardWithSource('topic')">
+                    <div class="banner-icon">💡</div>
+                    <div class="banner-content">
+                        <h3>From Topic / Curriculum</h3>
+                        <p>Generate assessments directly from a subject prompt without uploading files.</p>
+                    </div>
+                    <span class="banner-arrow">→</span>
+                </div>
+                <div class="action-banner" onclick="appState.startWizardWithSource('text')">
+                    <div class="banner-icon">📋</div>
+                    <div class="banner-content">
+                        <h3>From Pasted Notes</h3>
+                        <p>Paste lecture notes, study guides, or summaries to generate customized tests.</p>
+                    </div>
+                    <span class="banner-arrow">→</span>
+                </div>
+            </div>
+
+            <!-- Recent Exams Section -->
+            <div class="content-panel">
+                <div class="panel-header">
+                    <h2>Recent Exams</h2>
+                    <div class="search-box">
+                        <input type="text" id="exams-search" placeholder="Search exams by title or topic..." oninput="appState.filterExams(this.value)">
+                    </div>
+                </div>
+                <div id="exams-table-container">
+                    <div class="empty-state">
+                        <span class="empty-icon">📂</span>
+                        <p>No exams created yet. Click "Create New Exam" to generate your first test!</p>
+                    </div>
+                </div>
+            </div>
         </section>
 
-        <!-- Step 2: Configure Exam -->
-        <section id="config-section" class="section hidden">
-            <h2>Step 2: Configure Your Exam</h2>
-            <div class="config-form">
-                <div class="form-group">
-                    <label for="num-questions">Number of Questions:</label>
-                    <input type="number" id="num-questions" min="1" max="50" value="10" />
-                    <span class="help-text">Choose between 1 and 50 questions</span>
+        <!-- ================= VIEW 2: EXAM CREATION WIZARD ================= -->
+        <section id="view-wizard" class="app-view hidden">
+            <div class="view-header">
+                <div>
+                    <h1 class="view-title">Create New Exam</h1>
+                    <p class="view-desc">Configure your source material and assessment parameters.</p>
                 </div>
+                <button class="btn btn-secondary" onclick="appState.navigateTo('dashboard')">
+                    ← Back to Dashboard
+                </button>
+            </div>
+
+            <div class="wizard-grid">
+                <!-- Left: Source Selection -->
+                <div class="wizard-card">
+                    <h2 class="card-title">1. Source Material</h2>
+                    
+                    <!-- Source Tabs -->
+                    <div class="tab-pills">
+                        <button class="tab-pill active" data-source="pdf" onclick="appState.switchSourceTab('pdf')">
+                            📄 Upload PDF
+                        </button>
+                        <button class="tab-pill" data-source="topic" onclick="appState.switchSourceTab('topic')">
+                            💡 Topic / Prompt
+                        </button>
+                        <button class="tab-pill" data-source="text" onclick="appState.switchSourceTab('text')">
+                            📋 Paste Text
+                        </button>
+                    </div>
+
+                    <!-- PDF Upload Pane -->
+                    <div id="pane-source-pdf" class="source-pane">
+                        <div class="upload-dropzone" id="dropzone">
+                            <input type="file" id="pdf-file-input" accept=".pdf,.txt" class="file-hidden">
+                            <label for="pdf-file-input" class="dropzone-label">
+                                <span class="dropzone-icon">☁️</span>
+                                <span class="dropzone-text"><strong>Click to upload</strong> or drag & drop</span>
+                                <span class="dropzone-hint">PDF or TXT documents (Max 50MB)</span>
+                            </label>
+                        </div>
+                        <div id="pdf-upload-summary" class="upload-summary hidden"></div>
+                    </div>
+
+                    <!-- Topic Prompt Pane -->
+                    <div id="pane-source-topic" class="source-pane hidden">
+                        <div class="form-group">
+                            <label for="input-topic">Subject or Curriculum Topic:</label>
+                            <input type="text" id="input-topic" placeholder="e.g. Operating Systems: CPU Scheduling Algorithms">
+                            <span class="field-hint">Specify the subject, concepts, and key learning objectives.</span>
+                        </div>
+                    </div>
+
+                    <!-- Paste Text Pane -->
+                    <div id="pane-source-text" class="source-pane hidden">
+                        <div class="form-group">
+                            <label for="input-raw-text">Paste Lecture Notes / Syllabus:</label>
+                            <textarea id="input-raw-text" rows="8" placeholder="Paste study notes, definitions, or article excerpts here..."></textarea>
+                            <span class="field-hint">The AI will extract key concepts and formulate questions.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Exam Configuration -->
+                <div class="wizard-card">
+                    <h2 class="card-title">2. Exam Configuration</h2>
+
+                    <div class="form-group">
+                        <label for="exam-title-input">Exam Title (Optional):</label>
+                        <input type="text" id="exam-title-input" placeholder="e.g. Midterm Assessment: Computer Science">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="select-difficulty">Difficulty Level:</label>
+                            <select id="select-difficulty">
+                                <option value="easy">Easy (Recall & Basics)</option>
+                                <option value="medium" selected>Medium (Standard Comprehensive)</option>
+                                <option value="hard">Hard (Analysis & Application)</option>
+                                <option value="mixed">Mixed (Graduated Difficulty)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="select-audience">Target Education Level:</label>
+                            <select id="select-audience">
+                                <option value="Middle School">Middle School</option>
+                                <option value="High School">High School</option>
+                                <option value="Undergraduate" selected>Undergraduate / College</option>
+                                <option value="Professional">Professional Certification</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Question Types Breakdown -->
+                    <div class="form-group">
+                        <label>Question Formats & Quantities:</label>
+                        <div class="q-type-sliders">
+                            <div class="q-type-row">
+                                <span class="q-type-name">🔘 Multiple Choice (MCQ)</span>
+                                <input type="number" id="count-mcq" min="0" max="50" value="5" class="input-qty">
+                            </div>
+                            <div class="q-type-row">
+                                <span class="q-type-name">⚖️ True / False</span>
+                                <input type="number" id="count-tf" min="0" max="30" value="3" class="input-qty">
+                            </div>
+                            <div class="q-type-row">
+                                <span class="q-type-name">✏️ Short Answer</span>
+                                <input type="number" id="count-sa" min="0" max="20" value="2" class="input-qty">
+                            </div>
+                            <div class="q-type-row">
+                                <span class="q-type-name">📑 Essay / Analytical</span>
+                                <input type="number" id="count-essay" min="0" max="10" value="0" class="input-qty">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="input-time-limit">Time Limit (Minutes):</label>
+                            <input type="number" id="input-time-limit" min="0" max="300" value="30">
+                            <span class="field-hint">0 for untimed test</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="input-pass-score">Passing Score (%):</label>
+                            <input type="number" id="input-pass-score" min="10" max="100" value="70">
+                        </div>
+                    </div>
+
+                    <button id="btn-generate-exam" class="btn btn-primary btn-block btn-lg" onclick="appState.handleGenerateExam()">
+                        <span>✨ Generate Exam with AI</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= VIEW 3: QUESTION BANK & EDITOR ================= -->
+        <section id="view-editor" class="app-view hidden">
+            <div class="view-header">
+                <div>
+                    <h1 class="view-title" id="editor-exam-title">Question Bank & Editor</h1>
+                    <p class="view-desc" id="editor-exam-meta">Review and customize questions before sharing or taking.</p>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="appState.openAddQuestionModal()">
+                        ➕ Add Question
+                    </button>
+                    <button class="btn btn-secondary" onclick="appState.navigateTo('export')">
+                        📥 Export Paper
+                    </button>
+                    <button class="btn btn-primary" onclick="appState.startExamWithCurrent()">
+                        🎯 Start Online Exam
+                    </button>
+                </div>
+            </div>
+
+            <!-- Question Cards Container -->
+            <div id="editor-questions-list" class="questions-list">
+                <div class="empty-state">
+                    <span class="empty-icon">📝</span>
+                    <p>No questions loaded. Select an exam from the dashboard or generate a new one.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= VIEW 4: STUDENT EXAM PLAYER ================= -->
+        <section id="view-player" class="app-view hidden">
+            <!-- Sticky Exam Top Header -->
+            <div class="exam-player-header">
+                <div class="player-header-left">
+                    <h2 id="player-exam-title">Assessment Test</h2>
+                    <div class="player-student-input">
+                        <span>Candidate:</span>
+                        <input type="text" id="player-student-name" value="Student" placeholder="Enter your name">
+                    </div>
+                </div>
+
+                <div class="player-header-right">
+                    <div id="player-timer-container" class="timer-box">
+                        <span class="timer-icon">⏱️</span>
+                        <span id="player-timer-text">00:00</span>
+                    </div>
+                    <button class="btn btn-success" onclick="appState.confirmSubmitExam()">
+                        Submit Exam ✔
+                    </button>
+                </div>
+            </div>
+
+            <!-- Exam Player Layout -->
+            <div class="exam-player-layout">
+                <!-- Question Palette Navigation Sidebar -->
+                <aside class="palette-sidebar">
+                    <div class="palette-header">
+                        <h3>Question Navigator</h3>
+                        <span id="palette-progress-text">0 of 0 Answered</span>
+                    </div>
+
+                    <div class="palette-legend">
+                        <span class="legend-item"><span class="dot answered"></span> Answered</span>
+                        <span class="legend-item"><span class="dot current"></span> Current</span>
+                        <span class="legend-item"><span class="dot flagged"></span> Flagged</span>
+                        <span class="legend-item"><span class="dot unanswered"></span> Unanswered</span>
+                    </div>
+
+                    <div id="palette-grid" class="palette-grid"></div>
+
+                    <div class="palette-footer">
+                        <button id="btn-flag-question" class="btn btn-outline-warning btn-block" onclick="appState.toggleFlagCurrentQuestion()">
+                            🚩 Flag for Review
+                        </button>
+                    </div>
+                </aside>
+
+                <!-- Active Question Main Area -->
+                <div class="player-question-main">
+                    <div id="player-active-question-card" class="active-question-card">
+                        <!-- Rendered dynamically -->
+                    </div>
+
+                    <div class="player-nav-controls">
+                        <button id="btn-prev-question" class="btn btn-secondary" onclick="appState.prevQuestion()">
+                            ← Previous
+                        </button>
+                        <button id="btn-next-question" class="btn btn-primary" onclick="appState.nextQuestion()">
+                            Next →
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= VIEW 5: RESULTS & AUTO-GRADING ================= -->
+        <section id="view-results" class="app-view hidden">
+            <div class="view-header">
+                <div>
+                    <h1 class="view-title">Assessment Results</h1>
+                    <p class="view-desc" id="results-meta-desc">Automated objective scoring & AI rubric evaluation.</p>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="appState.retakeExam()">
+                        🔄 Retake Exam
+                    </button>
+                    <button class="btn btn-secondary" onclick="appState.navigateTo('export')">
+                        📥 Export Results
+                    </button>
+                    <button class="btn btn-primary" onclick="appState.navigateTo('dashboard')">
+                        Back to Dashboard
+                    </button>
+                </div>
+            </div>
+
+            <!-- Scorecard Summary Banner -->
+            <div class="results-scorecard">
+                <div class="score-radial-wrapper">
+                    <div class="score-circle" id="result-score-circle">
+                        <span id="result-score-percentage">0%</span>
+                    </div>
+                </div>
+
+                <div class="scorecard-details">
+                    <div id="result-status-badge" class="result-badge badge-pass">PASSED</div>
+                    <h2 id="result-headline">Outstanding Performance!</h2>
+                    <p id="result-summary-text">You scored above the passing threshold for this exam.</p>
+
+                    <div class="results-stat-bar">
+                        <div class="res-stat">
+                            <span class="stat-lbl">Points Earned:</span>
+                            <span id="result-points-earned" class="stat-val">0 / 0</span>
+                        </div>
+                        <div class="res-stat">
+                            <span class="stat-lbl">Time Taken:</span>
+                            <span id="result-time-taken" class="stat-val">00:00</span>
+                        </div>
+                        <div class="res-stat">
+                            <span class="stat-lbl">Passing Score:</span>
+                            <span id="result-passing-score" class="stat-val">70%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Question Breakdown Review List -->
+            <div class="content-panel">
+                <div class="panel-header">
+                    <h2>Detailed Question Review & Explanations</h2>
+                </div>
+                <div id="results-breakdown-list" class="results-list"></div>
+            </div>
+        </section>
+
+        <!-- ================= VIEW 6: EXPORT HUB ================= -->
+        <section id="view-export" class="app-view hidden">
+            <div class="view-header">
+                <div>
+                    <h1 class="view-title">Export & Sharing Hub</h1>
+                    <p class="view-desc" id="export-exam-title">Download ready-to-print papers, Word documents, LMS packages, and Google Forms files.</p>
+                </div>
+                <button class="btn btn-secondary" onclick="appState.navigateTo('editor')">
+                    ← Back to Question Bank
+                </button>
+            </div>
+
+            <!-- Export Cards Grid -->
+            <div class="export-cards-grid">
+                <!-- Card 1: Student PDF / Print -->
+                <div class="export-card">
+                    <div class="export-icon bg-indigo">📄</div>
+                    <div class="export-info">
+                        <h3>Student Exam Paper (PDF / Print)</h3>
+                        <p>Clean, formal printable test paper with student header, bubble options, and ruled lines. No answers shown.</p>
+                    </div>
+                    <button class="btn btn-outline-primary" onclick="appState.triggerExport('html', 'student')">
+                        🖨️ View & Print PDF
+                    </button>
+                </div>
+
+                <!-- Card 2: Teacher Solution Key -->
+                <div class="export-card">
+                    <div class="export-icon bg-emerald">🎓</div>
+                    <div class="export-info">
+                        <h3>Teacher Solution Key (PDF / Print)</h3>
+                        <p>Complete test paper with correct answers highlighted, full explanations, source citations, and rubrics.</p>
+                    </div>
+                    <button class="btn btn-outline-success" onclick="appState.triggerExport('html', 'teacher')">
+                        🖨️ View & Print Key
+                    </button>
+                </div>
+
+                <!-- Card 3: Word Document (Student) -->
+                <div class="export-card">
+                    <div class="export-icon bg-blue">📝</div>
+                    <div class="export-info">
+                        <h3>Microsoft Word (.docx) - Student</h3>
+                        <p>Editable Microsoft Word document formatted for classroom printing and custom school letterheads.</p>
+                    </div>
+                    <button class="btn btn-outline-primary" onclick="appState.triggerExport('docx', 'student')">
+                        📥 Download .docx
+                    </button>
+                </div>
+
+                <!-- Card 4: Word Document (Teacher) -->
+                <div class="export-card">
+                    <div class="export-icon bg-purple">📘</div>
+                    <div class="export-info">
+                        <h3>Microsoft Word (.docx) - Solution Key</h3>
+                        <p>Fully editable solution sheet and grading rubrics for Microsoft Word.</p>
+                    </div>
+                    <button class="btn btn-outline-primary" onclick="appState.triggerExport('docx', 'teacher')">
+                        📥 Download Key (.docx)
+                    </button>
+                </div>
+
+                <!-- Card 5: Google Forms Import -->
+                <div class="export-card">
+                    <div class="export-icon bg-amber">📋</div>
+                    <div class="export-info">
+                        <h3>Google Forms Format (CSV)</h3>
+                        <p>Structured CSV file formatted for Google Forms Quiz import scripts and Google Classroom.</p>
+                    </div>
+                    <button class="btn btn-outline-warning" onclick="appState.triggerExport('google-forms')">
+                        📥 Download Forms CSV
+                    </button>
+                </div>
+
+                <!-- Card 6: Moodle LMS (GIFT) -->
+                <div class="export-card">
+                    <div class="export-icon bg-teal">🏫</div>
+                    <div class="export-info">
+                        <h3>Moodle LMS Package (GIFT Format)</h3>
+                        <p>Standard GIFT file importable directly into Moodle Question Banks and LMS assessment engines.</p>
+                    </div>
+                    <button class="btn btn-outline-secondary" onclick="appState.triggerExport('gift')">
+                        📥 Download GIFT File
+                    </button>
+                </div>
+
+                <!-- Card 7: Portable JSON Backup -->
+                <div class="export-card">
+                    <div class="export-icon bg-slate">💾</div>
+                    <div class="export-info">
+                        <h3>Portable JSON Exam Data</h3>
+                        <p>Full structured JSON data of all questions, options, and metadata for developers and backups.</p>
+                    </div>
+                    <button class="btn btn-outline-secondary" onclick="appState.triggerExport('json')">
+                        📥 Download JSON
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ================= MODALS ================= -->
+
+    <!-- Settings Modal -->
+    <div id="modal-settings" class="modal-backdrop hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>⚙️ Settings & AI Configuration</h2>
+                <button class="btn-close" onclick="appState.closeSettings()">✕</button>
+            </div>
+            <div class="modal-body">
                 <div class="form-group">
-                    <label for="difficulty">Difficulty Level:</label>
-                    <select id="difficulty">
-                        <option value="easy">Easy</option>
-                        <option value="medium" selected>Medium</option>
-                        <option value="hard">Hard</option>
+                    <label for="settings-provider-select">Active AI Provider:</label>
+                    <select id="settings-provider-select" onchange="appState.handleProviderChange(this.value)">
+                        <option value="demo">Demo / Offline Generator (Zero Setup Required)</option>
+                        <option value="gemini">Google Gemini AI (Gemini 1.5 Flash / Pro)</option>
+                        <option value="openai">OpenAI (GPT-4o / GPT-4o-mini)</option>
+                    </select>
+                    <span class="field-hint">The Demo Engine extracts real questions from your document without an API key!</span>
+                </div>
+
+                <div id="gemini-key-group" class="form-group hidden">
+                    <label for="settings-gemini-key">Google Gemini API Key:</label>
+                    <input type="password" id="settings-gemini-key" placeholder="AIzaSy...">
+                    <span class="field-hint">Get a free key from Google AI Studio. Stored securely in your browser.</span>
+                </div>
+
+                <div id="openai-key-group" class="form-group hidden">
+                    <label for="settings-openai-key">OpenAI API Key:</label>
+                    <input type="password" id="settings-openai-key" placeholder="sk-...">
+                    <span class="field-hint">OpenAI platform API key. Stored securely in your browser.</span>
+                </div>
+
+                <div class="settings-test-area">
+                    <button class="btn btn-secondary" onclick="appState.testAIConnection()">
+                        🧪 Test Connection
+                    </button>
+                    <span id="settings-test-status" class="test-status"></span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="appState.closeSettings()">Cancel</button>
+                <button class="btn btn-primary" onclick="appState.saveSettings()">Save Preferences</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Regenerate Question Modal -->
+    <div id="modal-regenerate" class="modal-backdrop hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>🪄 AI Question Regenerator</h2>
+                <button class="btn-close" onclick="appState.closeRegenerateModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <p>Provide specific guidance to help the AI refine or replace this question:</p>
+                <div class="form-group">
+                    <label for="regen-instruction">Custom Instruction / Focus:</label>
+                    <textarea id="regen-instruction" rows="4" placeholder="e.g. 'Make this question more challenging', 'Focus on real-world practical code examples', 'Replace option B and C with closer distractors'"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="appState.closeRegenerateModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="appState.confirmRegenerateQuestion()">Regenerate Question</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Custom Question Modal -->
+    <div id="modal-add-question" class="modal-backdrop hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>➕ Add Custom Question</h2>
+                <button class="btn-close" onclick="appState.closeAddQuestionModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="new-q-type">Question Type:</label>
+                    <select id="new-q-type" onchange="appState.toggleNewQuestionFields(this.value)">
+                        <option value="mcq">Multiple Choice (MCQ)</option>
+                        <option value="true_false">True / False</option>
+                        <option value="short_answer">Short Answer</option>
+                        <option value="essay">Essay / Analytical</option>
                     </select>
                 </div>
-                <button id="generate-btn" class="btn btn-primary">Generate Exam</button>
-                <div id="generation-status" class="status-message"></div>
-            </div>
-        </section>
 
-        <!-- Step 3: Take Exam -->
-        <section id="exam-section" class="section hidden">
-            <div class="exam-header">
-                <h2 id="exam-title">Your Exam</h2>
-                <div class="exam-meta">
-                    <span id="question-counter">Question 1 of 10</span>
-                    <span id="timer">Time: 00:00</span>
+                <div class="form-group">
+                    <label for="new-q-text">Question Prompt:</label>
+                    <textarea id="new-q-text" rows="3" placeholder="Enter question text here..."></textarea>
                 </div>
-            </div>
-            
-            <div id="questions-container" class="questions-container"></div>
-            
-            <div class="exam-controls">
-                <button id="submit-exam-btn" class="btn btn-success">Submit Exam</button>
-            </div>
-        </section>
 
-        <!-- Step 4: Results -->
-        <section id="results-section" class="section hidden">
-            <h2>Exam Results</h2>
-            <div class="results-summary">
-                <div class="score-display">
-                    <div class="score-circle">
-                        <span id="score-percentage">0%</span>
+                <!-- MCQ Options Block -->
+                <div id="new-q-mcq-block">
+                    <label>Answer Choices (Select radio button for the correct choice):</label>
+                    <div class="new-opt-row">
+                        <input type="radio" name="new-correct-opt" value="0" checked>
+                        <input type="text" id="new-opt-0" placeholder="Option A (Correct)" class="opt-input">
                     </div>
-                    <p id="score-text">Great job!</p>
-                </div>
-                <div class="results-stats">
-                    <div class="stat">
-                        <span class="stat-label">Correct Answers:</span>
-                        <span id="correct-count" class="stat-value">0</span>
+                    <div class="new-opt-row">
+                        <input type="radio" name="new-correct-opt" value="1">
+                        <input type="text" id="new-opt-1" placeholder="Option B" class="opt-input">
                     </div>
-                    <div class="stat">
-                        <span class="stat-label">Total Questions:</span>
-                        <span id="total-questions" class="stat-value">0</span>
+                    <div class="new-opt-row">
+                        <input type="radio" name="new-correct-opt" value="2">
+                        <input type="text" id="new-opt-2" placeholder="Option C" class="opt-input">
                     </div>
-                    <div class="stat">
-                        <span class="stat-label">Time Taken:</span>
-                        <span id="time-taken" class="stat-value">0:00</span>
+                    <div class="new-opt-row">
+                        <input type="radio" name="new-correct-opt" value="3">
+                        <input type="text" id="new-opt-3" placeholder="Option D" class="opt-input">
                     </div>
                 </div>
-            </div>
 
-            <div class="results-details">
-                <h3>Question Review</h3>
-                <div id="results-container"></div>
-            </div>
+                <!-- True False Block -->
+                <div id="new-q-tf-block" class="hidden">
+                    <label>Correct Answer:</label>
+                    <div class="tf-select-row">
+                        <label><input type="radio" name="new-tf-val" value="True" checked> True</label>
+                        <label style="margin-left: 20px;"><input type="radio" name="new-tf-val" value="False"> False</label>
+                    </div>
+                </div>
 
-            <div class="results-actions">
-                <button id="new-exam-btn" class="btn btn-primary">Generate New Exam</button>
-                <button id="review-attempts-btn" class="btn btn-secondary">View Past Attempts</button>
-            </div>
-        </section>
+                <!-- Subjective Answer / Rubric Block -->
+                <div id="new-q-subjective-block" class="hidden">
+                    <div class="form-group">
+                        <label for="new-q-model-ans">Expected Model Answer / Rubric:</label>
+                        <textarea id="new-q-model-ans" rows="3" placeholder="Key points and evaluation criteria..."></textarea>
+                    </div>
+                </div>
 
-        <!-- Past Attempts -->
-        <section id="attempts-section" class="section hidden">
-            <h2>Past Exam Attempts</h2>
-            <button id="back-to-results-btn" class="btn btn-secondary">← Back to Results</button>
-            <div id="attempts-container" class="attempts-container"></div>
-        </section>
-    </main>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="new-q-points">Points (Marks):</label>
+                        <input type="number" id="new-q-points" value="1.0" min="0.5" max="50" step="0.5">
+                    </div>
+                    <div class="form-group">
+                        <label for="new-q-page">Source Page # (Optional):</label>
+                        <input type="number" id="new-q-page" value="1" min="1">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="new-q-justification">Explanation / Rationale:</label>
+                    <textarea id="new-q-justification" rows="2" placeholder="Why this answer is correct..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="appState.closeAddQuestionModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="appState.saveNewQuestion()">Save Question</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Loading Overlay -->
     <div id="loading-overlay" class="loading-overlay hidden">
-        <div class="spinner"></div>
-        <p id="loading-message">Processing...</p>
+        <div class="loading-spinner"></div>
+        <p id="loading-message" class="loading-text">Generating exam questions with AI...</p>
+        <span class="loading-subtext">Analyzing document concepts and building answer keys</span>
     </div>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <p>Built with Python, Flask, PyMuPDF, and OpenAI • Ready for desktop deployment with Electron</p>
-    </footer>
+    <!-- Notification Toast -->
+    <div id="toast-container" class="toast-container"></div>
 
     <script src="app.js"></script>
 </body>

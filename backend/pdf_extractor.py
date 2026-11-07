@@ -2,7 +2,7 @@
 PDF text extraction module with OCR support
 Extracts text from PDF documents and handles scanned/image-based PDFs using Tesseract OCR
 """
-import fitz  # PyMuPDF
+import pymupdf as fitz  # PyMuPDF
 import pytesseract
 from PIL import Image
 import io

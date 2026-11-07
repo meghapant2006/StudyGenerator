@@ -1,8 +1,14 @@
 """
-Flask API for exam generator application
-Provides REST endpoints for PDF upload, question generation, and exam taking
+Flask REST API for Exam Generator Platform (StudyWise AI / exam-generator.com)
+Provides REST endpoints for:
+- Document upload and OCR text extraction
+- Multi-source AI exam generation (PDF, raw text, topics)
+- Full Exam and Question Bank CRUD (add, edit, delete, reorder, regenerate)
+- Timed exam taking and AI auto-grading with rubric evaluations
+- Multi-format exports (Student & Teacher PDF/HTML, Word .docx, Moodle GIFT, Google Forms CSV, JSON)
+- Dashboard analytics and settings
 """
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, Response
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from pathlib import Path
@@ -10,6 +16,8 @@ import uuid
 from datetime import datetime
 import logging
 import os
+import io
+import json
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -17,16 +25,18 @@ load_dotenv()
 
 from config import (
     FLASK_HOST, FLASK_PORT, DEBUG, UPLOAD_DIR, MAX_FILE_SIZE,
-    ALLOWED_EXTENSIONS, DEFAULT_NUM_QUESTIONS, MIN_QUESTIONS, MAX_QUESTIONS
+    ALLOWED_EXTENSIONS, DEFAULT_NUM_QUESTIONS, MIN_QUESTIONS, MAX_QUESTIONS,
+    AI_GEMINI_KEY, AI_OPENAI_KEY, DEFAULT_AI_PROVIDER
 )
 from pdf_extractor import extract_pdf_text, PDFExtractor
 from ai_generator import AIQuestionGenerator
 from database import Database
-from models import PDFDocument, Exam, ExamAttempt
+from models import PDFDocument, Exam, Question, Answer, ExamAttempt
+from export_service import ExportService
 
 # Initialize Flask app
 app = Flask(__name__, static_folder='../frontend', static_url_path='')
-CORS(app)  # Enable CORS for frontend communication
+CORS(app)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -34,6 +44,7 @@ logger = logging.getLogger(__name__)
 
 # Initialize components
 db = Database()
+export_service = ExportService()
 
 # Global storage for extracted PDF content (in-memory cache)
 pdf_content_cache = {}
@@ -44,18 +55,19 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-def get_ai_generator():
-    """Get AI generator instance (lazy loading)"""
-    api_key = os.getenv('OPENAI_API_KEY')
-    if not api_key:
-        raise ValueError("OPENAI_API_KEY environment variable not set")
-    return AIQuestionGenerator(api_key)
+def get_ai_generator_from_request(req_data: dict = None) -> AIQuestionGenerator:
+    """Factory for AIQuestionGenerator with request overrides or server env fallback"""
+    data = req_data or {}
+    provider = data.get('provider')
+    api_key = data.get('api_key')
+    model = data.get('model')
+    return AIQuestionGenerator(provider=provider, api_key=api_key, model=model)
 
 
-# API Routes
+# Static Routes
 @app.route('/')
 def index():
-    """Serve main HTML page"""
+    """Serve main Single Page Application"""
     return send_from_directory(app.static_folder, 'index.html')
 
 
@@ -64,314 +76,579 @@ def health_check():
     """Health check endpoint"""
     return jsonify({
         'status': 'ok',
-        'message': 'Exam generator API is running'
+        'message': 'StudyWise Exam Generator API is running',
+        'timestamp': datetime.now().isoformat()
     })
 
 
-@app.route('/api/upload', methods=['POST'])
-def upload_pdf():
-    """
-    Upload PDF file and extract text
-    
-    Returns:
-        JSON with PDF metadata and extraction summary
-    """
+# Analytics Route
+@app.route('/api/analytics', methods=['GET'])
+def get_analytics():
+    """Get high level analytics and metrics for dashboard"""
     try:
-        # Check if file is present
+        summary = db.get_analytics_summary()
+        recent_exams = [e.to_dict() for e in db.get_all_exams()[:6]]
+        recent_attempts = db.get_recent_attempts(limit=5)
+        return jsonify({
+            'success': True,
+            'summary': summary,
+            'recent_exams': recent_exams,
+            'recent_attempts': recent_attempts
+        })
+    except Exception as e:
+        logger.error(f"Failed to retrieve analytics: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+# PDF and Document Upload
+@app.route('/api/upload', methods=['POST'])
+def upload_file():
+    """Upload PDF or TXT file and extract text"""
+    try:
         if 'file' not in request.files:
             return jsonify({'error': 'No file provided'}), 400
         
         file = request.files['file']
-        
         if file.filename == '':
             return jsonify({'error': 'No file selected'}), 400
         
         if not allowed_file(file.filename):
-            return jsonify({'error': 'Invalid file type. Only PDF files allowed'}), 400
+            return jsonify({'error': f'Invalid file type. Allowed: {", ".join(ALLOWED_EXTENSIONS)}'}), 400
         
-        # Generate unique filename
         original_name = secure_filename(file.filename)
         unique_filename = f"{uuid.uuid4()}_{original_name}"
         file_path = UPLOAD_DIR / unique_filename
-        
-        # Save file
         file.save(file_path)
         logger.info(f"Saved uploaded file: {unique_filename}")
+
+        ext = original_name.rsplit('.', 1)[1].lower()
         
-        # Extract text from PDF
-        logger.info("Extracting text from PDF...")
-        text_data, summary = extract_pdf_text(str(file_path))
-        
-        # Cache extracted content
+        if ext == 'pdf':
+            text_data, summary = extract_pdf_text(str(file_path))
+            ocr_used = summary.get('ocr_used', False)
+            total_pages = summary.get('total_pages', 1)
+        else:
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                content = f.read()
+            text_data = {1: content}
+            summary = {
+                'total_pages': 1,
+                'pages_with_text': 1,
+                'total_characters': len(content),
+                'total_words': len(content.split()),
+                'ocr_used': False,
+                'avg_words_per_page': len(content.split())
+            }
+            ocr_used = False
+            total_pages = 1
+
         pdf_content_cache[unique_filename] = text_data
         
-        # Save PDF metadata to database
         pdf_doc = PDFDocument(
             filename=unique_filename,
             original_name=original_name,
             upload_date=datetime.now().isoformat(),
-            total_pages=summary['total_pages'],
+            total_pages=total_pages,
             text_extracted=True,
-            ocr_used=summary['ocr_used']
+            ocr_used=ocr_used
         )
-        
         pdf_id = db.save_pdf(pdf_doc)
         pdf_doc.id = pdf_id
-        
-        logger.info(f"PDF processed successfully. ID: {pdf_id}")
+
+        # Text snippet for preview
+        preview_text = text_data[1][:600] if 1 in text_data else ""
         
         return jsonify({
             'success': True,
             'pdf': pdf_doc.to_dict(),
-            'summary': summary
+            'summary': summary,
+            'preview_text': preview_text
         })
-        
     except Exception as e:
         logger.error(f"Upload failed: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 
+# Exam Generation
 @app.route('/api/generate-exam', methods=['POST'])
 def generate_exam():
     """
-    Generate exam questions using AI
-    
-    Expected JSON body:
-        {
-            "pdf_id": int,
-            "num_questions": int,
-            "difficulty": "easy|medium|hard"
-        }
-    
-    Returns:
-        JSON with generated exam
+    Generate exam from:
+    1. Uploaded PDF (via pdf_id)
+    2. Direct text / notes (via raw_text)
+    3. Topic / prompt (via topic)
     """
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
         
-        # Validate input
-        pdf_id = data.get('pdf_id')
-        num_questions = data.get('num_questions', DEFAULT_NUM_QUESTIONS)
+        source_type = data.get('source_type', 'pdf')
+        title = data.get('title', '').strip()
         difficulty = data.get('difficulty', 'medium')
+        target_audience = data.get('target_audience', 'General')
+        time_limit = int(data.get('time_limit', 0))
+        passing_score = float(data.get('passing_score', 70.0))
         
-        if not pdf_id:
-            return jsonify({'error': 'pdf_id is required'}), 400
+        # Question type breakdown
+        q_config = data.get('question_config')
+        if not q_config:
+            num_q = int(data.get('num_questions', DEFAULT_NUM_QUESTIONS))
+            q_config = {'mcq': num_q}
+
+        content_for_ai = ""
+        source_ref = ""
+        pdf_id = None
         
-        if not MIN_QUESTIONS <= num_questions <= MAX_QUESTIONS:
-            return jsonify({
-                'error': f'Number of questions must be between {MIN_QUESTIONS} and {MAX_QUESTIONS}'
-            }), 400
-        
-        # Get PDF from database
-        pdf_doc = db.get_pdf(pdf_id)
-        if not pdf_doc:
-            return jsonify({'error': 'PDF not found'}), 404
-        
-        # Get cached content or reload
-        if pdf_doc.filename not in pdf_content_cache:
-            file_path = UPLOAD_DIR / pdf_doc.filename
-            text_data, _ = extract_pdf_text(str(file_path))
-            pdf_content_cache[pdf_doc.filename] = text_data
-        
-        content = pdf_content_cache[pdf_doc.filename]
-        
-        # Generate questions using AI
-        logger.info(f"Generating {num_questions} questions for PDF {pdf_id}")
-        ai_generator = get_ai_generator()
-        questions = ai_generator.generate_questions(content, num_questions, difficulty)
+        if source_type == 'pdf':
+            pdf_id = data.get('pdf_id')
+            if not pdf_id:
+                return jsonify({'error': 'pdf_id is required for PDF source'}), 400
+            pdf_doc = db.get_pdf(pdf_id)
+            if not pdf_doc:
+                return jsonify({'error': 'PDF document not found'}), 404
+            
+            source_ref = pdf_doc.original_name
+            if not title:
+                title = f"Exam: {pdf_doc.original_name.rsplit('.', 1)[0]}"
+                
+            if pdf_doc.filename not in pdf_content_cache:
+                file_path = UPLOAD_DIR / pdf_doc.filename
+                text_data, _ = extract_pdf_text(str(file_path))
+                pdf_content_cache[pdf_doc.filename] = text_data
+            content_for_ai = pdf_content_cache[pdf_doc.filename]
+            
+        elif source_type == 'text':
+            raw_text = data.get('raw_text', '').strip()
+            if not raw_text:
+                return jsonify({'error': 'raw_text is required for Text source'}), 400
+            content_for_ai = raw_text
+            source_ref = "Pasted Study Notes"
+            if not title:
+                title = "Exam from Study Notes"
+                
+        elif source_type == 'topic':
+            topic = data.get('topic', '').strip()
+            if not topic:
+                return jsonify({'error': 'topic is required for Topic source'}), 400
+            content_for_ai = f"Curriculum Subject / Topic: {topic}. Generate comprehensive questions covering core principles, mechanisms, applications, and problem-solving scenarios for {topic}."
+            source_ref = topic
+            if not title:
+                title = f"Assessment: {topic}"
+        else:
+            return jsonify({'error': f'Unsupported source_type: {source_type}'}), 400
+
+        # Instantiate generator
+        ai_generator = get_ai_generator_from_request(data)
+        questions = ai_generator.generate_questions(
+            content=content_for_ai,
+            question_config=q_config,
+            difficulty=difficulty,
+            target_audience=target_audience,
+            source_type=source_type
+        )
         
         if not questions:
             return jsonify({'error': 'Failed to generate questions'}), 500
-        
-        # Create exam
+
+        # Construct and persist Exam
         exam = Exam(
             pdf_id=pdf_id,
-            title=f"Exam from {pdf_doc.original_name}",
-            num_questions=len(questions),
+            title=title,
+            description=f"Generated from {source_ref} ({difficulty.capitalize()} level)",
+            source_type=source_type,
+            source_ref=source_ref,
+            difficulty=difficulty,
+            target_audience=target_audience,
+            time_limit=time_limit,
+            passing_score=passing_score,
             questions=questions
         )
         
-        # Save to database
         exam_id = db.save_exam(exam)
-        exam.id = exam_id
-        
-        logger.info(f"Generated exam {exam_id} with {len(questions)} questions")
+        saved_exam = db.get_exam(exam_id)
         
         return jsonify({
             'success': True,
-            'exam': exam.to_dict()
+            'exam': saved_exam.to_dict()
         })
         
-    except ValueError as e:
-        logger.error(f"Configuration error: {str(e)}")
-        return jsonify({
-            'error': 'AI service not configured. Please set OPENAI_API_KEY environment variable.'
-        }), 500
     except Exception as e:
         logger.error(f"Exam generation failed: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 
+# Exam Management Routes (CRUD)
+@app.route('/api/exams', methods=['GET'])
+def get_all_exams():
+    """Get all exams"""
+    try:
+        exams = db.get_all_exams()
+        return jsonify({
+            'success': True,
+            'exams': [exam.to_dict() for exam in exams]
+        })
+    except Exception as e:
+        logger.error(f"Failed to retrieve exams: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/exam/<int:exam_id>', methods=['GET'])
 def get_exam(exam_id):
-    """Get exam by ID"""
+    """Get single exam by ID"""
     try:
         exam = db.get_exam(exam_id)
-        
         if not exam:
             return jsonify({'error': 'Exam not found'}), 404
-        
         return jsonify({
             'success': True,
             'exam': exam.to_dict()
         })
-        
     except Exception as e:
-        logger.error(f"Failed to retrieve exam: {str(e)}")
+        logger.error(f"Failed to get exam {exam_id}: {e}")
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/api/submit-attempt', methods=['POST'])
-def submit_attempt():
-    """
-    Submit exam attempt
-    
-    Expected JSON body:
-        {
-            "exam_id": int,
-            "answers": {question_id: selected_index},
-            "time_taken": int (seconds)
-        }
-    
-    Returns:
-        JSON with score and detailed results
-    """
+@app.route('/api/exam/<int:exam_id>', methods=['PUT'])
+def update_exam(exam_id):
+    """Update exam metadata"""
     try:
-        data = request.get_json()
-        
-        exam_id = data.get('exam_id')
-        answers = data.get('answers', {})
-        time_taken = data.get('time_taken', 0)
-        
-        if not exam_id:
-            return jsonify({'error': 'exam_id is required'}), 400
-        
-        # Get exam
+        data = request.get_json() or {}
+        updated = db.update_exam(exam_id, data)
+        if not updated:
+            return jsonify({'error': 'Exam not found or no valid fields to update'}), 404
+        return jsonify({
+            'success': True,
+            'exam': db.get_exam(exam_id).to_dict()
+        })
+    except Exception as e:
+        logger.error(f"Failed to update exam {exam_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/exam/<int:exam_id>', methods=['DELETE'])
+def delete_exam(exam_id):
+    """Delete exam and associated records"""
+    try:
+        deleted = db.delete_exam(exam_id)
+        if not deleted:
+            return jsonify({'error': 'Exam not found'}), 404
+        return jsonify({
+            'success': True,
+            'message': f'Exam {exam_id} deleted successfully'
+        })
+    except Exception as e:
+        logger.error(f"Failed to delete exam {exam_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+# Question Bank & Editor Routes
+@app.route('/api/exam/<int:exam_id>/questions', methods=['POST'])
+def add_question_to_exam(exam_id):
+    """Add new question manually to an exam"""
+    try:
+        data = request.get_json() or {}
         exam = db.get_exam(exam_id)
         if not exam:
             return jsonify({'error': 'Exam not found'}), 404
+            
+        question = Question.from_dict(data)
+        question.exam_id = exam_id
+        q_id = db.add_question(exam_id, question)
+        new_q = db.get_question(q_id)
         
-        # Convert string keys to int
-        answers = {int(k): v for k, v in answers.items()}
+        return jsonify({
+            'success': True,
+            'question': new_q.to_dict()
+        })
+    except Exception as e:
+        logger.error(f"Failed to add question to exam {exam_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/questions/<int:question_id>', methods=['GET'])
+def get_question(question_id):
+    """Get single question"""
+    try:
+        q = db.get_question(question_id)
+        if not q:
+            return jsonify({'error': 'Question not found'}), 404
+        return jsonify({'success': True, 'question': q.to_dict()})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/questions/<int:question_id>', methods=['PUT'])
+def update_question(question_id):
+    """Update question content, choices, or points"""
+    try:
+        data = request.get_json() or {}
+        updated = db.update_question(question_id, data)
+        if not updated:
+            return jsonify({'error': 'Question not found or update failed'}), 404
+        return jsonify({
+            'success': True,
+            'question': db.get_question(question_id).to_dict()
+        })
+    except Exception as e:
+        logger.error(f"Failed to update question {question_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/questions/<int:question_id>', methods=['DELETE'])
+def delete_question(question_id):
+    """Delete question by ID"""
+    try:
+        deleted = db.delete_question(question_id)
+        if not deleted:
+            return jsonify({'error': 'Question not found'}), 404
+        return jsonify({
+            'success': True,
+            'message': f'Question {question_id} deleted successfully'
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/questions/<int:question_id>/regenerate', methods=['POST'])
+def regenerate_question(question_id):
+    """Regenerate a single question with optional AI prompt/feedback"""
+    try:
+        data = request.get_json() or {}
+        instruction = data.get('instruction', '')
         
-        # Create attempt
+        old_q = db.get_question(question_id)
+        if not old_q:
+            return jsonify({'error': 'Question not found'}), 404
+            
+        exam = db.get_exam(old_q.exam_id)
+        context = exam.description if exam else old_q.question_text
+        if exam and exam.pdf_id:
+            pdf = db.get_pdf(exam.pdf_id)
+            if pdf and pdf.filename in pdf_content_cache:
+                context = pdf_content_cache[pdf.filename]
+
+        ai_generator = get_ai_generator_from_request(data)
+        new_q = ai_generator.regenerate_question(old_q, context, instruction)
+        
+        # Update question in database
+        db.update_question(question_id, new_q.to_dict())
+        updated_q = db.get_question(question_id)
+        
+        return jsonify({
+            'success': True,
+            'question': updated_q.to_dict()
+        })
+    except Exception as e:
+        logger.error(f"Failed to regenerate question {question_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+# Exam Taking & Auto-Grading Routes
+@app.route('/api/submit-attempt', methods=['POST'])
+def submit_attempt():
+    """
+    Submit exam attempt:
+    - Auto-grades objective questions (MCQ, True/False)
+    - AI auto-grades subjective questions (Short Answer, Essay) against rubrics
+    - Records attempt to database and returns detailed results
+    """
+    try:
+        data = request.get_json() or {}
+        exam_id = data.get('exam_id')
+        student_name = data.get('student_name', 'Student').strip() or 'Student'
+        answers = data.get('answers', {})
+        time_taken = int(data.get('time_taken', 0))
+        
+        if not exam_id:
+            return jsonify({'error': 'exam_id is required'}), 400
+            
+        exam = db.get_exam(exam_id)
+        if not exam:
+            return jsonify({'error': 'Exam not found'}), 404
+
+        # Convert string question keys
+        normalized_answers = {}
+        for k, v in answers.items():
+            try:
+                normalized_answers[int(k)] = v
+            except ValueError:
+                normalized_answers[k] = v
+
+        # AI evaluation for subjective questions
+        ai_generator = get_ai_generator_from_request(data)
+        feedback = ai_generator.grade_subjective_answers(
+            exam_id=exam_id,
+            questions=exam.questions,
+            user_answers=normalized_answers
+        )
+
         attempt = ExamAttempt(
             exam_id=exam_id,
-            answers=answers,
+            student_name=student_name,
+            answers=normalized_answers,
+            feedback=feedback,
             time_taken=time_taken
         )
         
-        # Calculate score
-        score = attempt.calculate_score(exam)
+        # Calculate full score and points
+        attempt.calculate_score(exam)
         
-        # Save attempt
         attempt_id = db.save_attempt(attempt)
         attempt.id = attempt_id
         
-        logger.info(f"Saved exam attempt {attempt_id}. Score: {score:.1f}%")
+        logger.info(f"Recorded attempt {attempt_id} for exam {exam_id}. Score: {attempt.score:.1f}%")
         
         return jsonify({
             'success': True,
             'attempt': attempt.to_dict(),
-            'score': score
+            'score': attempt.score,
+            'points_earned': attempt.points_earned,
+            'total_points': attempt.total_points,
+            'passed': attempt.passed,
+            'feedback': feedback
         })
-        
     except Exception as e:
         logger.error(f"Failed to submit attempt: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/api/exams', methods=['GET'])
-def get_all_exams():
-    """Get all exams"""
-    try:
-        pdfs = db.get_all_pdfs()
-        all_exams = []
-        
-        for pdf in pdfs:
-            exams = db.get_exams_by_pdf(pdf.id)
-            all_exams.extend(exams)
-        
-        return jsonify({
-            'success': True,
-            'exams': [exam.to_dict() for exam in all_exams]
-        })
-        
-    except Exception as e:
-        logger.error(f"Failed to retrieve exams: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-
 @app.route('/api/attempts/<int:exam_id>', methods=['GET'])
 def get_exam_attempts(exam_id):
-    """Get all attempts for an exam"""
+    """Get all past attempts for an exam"""
     try:
         attempts = db.get_attempts_by_exam(exam_id)
-        
         return jsonify({
             'success': True,
-            'attempts': [attempt.to_dict() for attempt in attempts]
+            'attempts': [att.to_dict() for att in attempts]
         })
-        
     except Exception as e:
-        logger.error(f"Failed to retrieve attempts: {str(e)}")
+        logger.error(f"Failed to retrieve attempts: {e}")
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/api/pdfs', methods=['GET'])
-def get_all_pdfs():
-    """Get all uploaded PDFs"""
+# Export & Sharing Routes
+@app.route('/api/export/<int:exam_id>/<format_type>', methods=['GET'])
+def export_exam(exam_id, format_type):
+    """
+    Export exam in specified format:
+    - html?type=student|teacher
+    - docx?type=student|teacher
+    - gift (Moodle format)
+    - google-forms (CSV)
+    - json (Full portable JSON)
+    """
     try:
-        pdfs = db.get_all_pdfs()
-        
-        return jsonify({
-            'success': True,
-            'pdfs': [pdf.to_dict() for pdf in pdfs]
-        })
-        
+        exam = db.get_exam(exam_id)
+        if not exam:
+            return jsonify({'error': 'Exam not found'}), 404
+            
+        export_mode = request.args.get('type', 'student').lower()
+        safe_title = secure_filename(exam.title.replace(' ', '_')) or f"exam_{exam_id}"
+
+        if format_type == 'html':
+            html_content = export_service.generate_html(exam, export_mode)
+            return Response(html_content, mimetype='text/html')
+            
+        elif format_type == 'docx':
+            docx_bytes = export_service.generate_docx(exam, export_mode)
+            filename = f"{safe_title}_{export_mode}.docx"
+            return Response(
+                docx_bytes,
+                mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+            )
+            
+        elif format_type == 'gift':
+            gift_content = export_service.generate_gift(exam)
+            filename = f"{safe_title}_moodle.gift.txt"
+            return Response(
+                gift_content,
+                mimetype='text/plain',
+                headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+            )
+            
+        elif format_type == 'google-forms':
+            csv_content = export_service.generate_google_forms_csv(exam)
+            filename = f"{safe_title}_google_forms.csv"
+            return Response(
+                csv_content,
+                mimetype='text/csv',
+                headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+            )
+            
+        elif format_type == 'json':
+            json_str = json.dumps(exam.to_dict(), indent=2)
+            filename = f"{safe_title}.json"
+            return Response(
+                json_str,
+                mimetype='application/json',
+                headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+            )
+            
+        else:
+            return jsonify({'error': f'Unsupported export format: {format_type}'}), 400
+
     except Exception as e:
-        logger.error(f"Failed to retrieve PDFs: {str(e)}")
+        logger.error(f"Export error for exam {exam_id} ({format_type}): {e}")
         return jsonify({'error': str(e)}), 500
 
 
-# Error handlers
+# Settings & Providers Route
+@app.route('/api/settings', methods=['GET', 'POST'])
+def manage_settings():
+    """Get status of configured AI providers and test connections"""
+    if request.method == 'GET':
+        return jsonify({
+            'success': True,
+            'providers': {
+                'demo': {'available': True, 'default': True, 'label': 'Demo / Offline Engine (Zero Setup)'},
+                'gemini': {
+                    'available': bool(os.getenv('GEMINI_API_KEY') or AI_GEMINI_KEY),
+                    'default_model': 'gemini-1.5-flash',
+                    'label': 'Google Gemini AI'
+                },
+                'openai': {
+                    'available': bool(os.getenv('OPENAI_API_KEY') or AI_OPENAI_KEY),
+                    'default_model': 'gpt-4o-mini',
+                    'label': 'OpenAI'
+                }
+            }
+        })
+    else:
+        # Test connection
+        data = request.get_json() or {}
+        provider = data.get('provider', 'demo')
+        api_key = data.get('api_key')
+        try:
+            gen = AIQuestionGenerator(provider=provider, api_key=api_key)
+            test_q = gen.generate_questions("Biology: Cells are the basic unit of life.", {'mcq': 1})
+            return jsonify({
+                'success': True,
+                'message': f'Connection test to {provider.upper()} successful! Generated sample question.'
+            })
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': f'Connection test failed: {str(e)}'
+            }), 400
+
+
+# Error Handlers
 @app.errorhandler(413)
 def request_entity_too_large(error):
-    """Handle file too large error"""
     return jsonify({'error': f'File too large. Maximum size is {MAX_FILE_SIZE / (1024*1024):.0f}MB'}), 413
 
 
 @app.errorhandler(404)
 def not_found(error):
-    """Handle 404 errors"""
     return jsonify({'error': 'Endpoint not found'}), 404
 
 
 @app.errorhandler(500)
 def internal_error(error):
-    """Handle 500 errors"""
     logger.error(f"Internal server error: {str(error)}")
     return jsonify({'error': 'Internal server error'}), 500
 
 
 if __name__ == '__main__':
-    logger.info(f"Starting exam generator API on {FLASK_HOST}:{FLASK_PORT}")
-    logger.info(f"Upload directory: {UPLOAD_DIR}")
-    logger.info(f"Database: {db.db_path}")
-    
-    # Check for API key
-    if not os.getenv('OPENAI_API_KEY'):
-        logger.warning("⚠️  OPENAI_API_KEY not set. AI generation will not work!")
-        logger.warning("   Set it with: $env:OPENAI_API_KEY='your-key-here'")
-    
+    logger.info(f"Starting Exam Generator Platform on {FLASK_HOST}:{FLASK_PORT}")
     app.run(host=FLASK_HOST, port=FLASK_PORT, debug=DEBUG)

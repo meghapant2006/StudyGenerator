@@ -24,24 +24,27 @@ DEBUG = True
 
 # File upload settings
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
-ALLOWED_EXTENSIONS = {'pdf'}
+ALLOWED_EXTENSIONS = {'pdf', 'txt'}
 
 # PDF extraction settings
 USE_OCR = True  # Enable OCR for scanned PDFs
 OCR_LANGUAGE = 'eng'  # Tesseract language code
 MIN_TEXT_CONFIDENCE = 60  # Minimum OCR confidence percentage
 
-# AI settings (OpenAI example - you can swap with other providers)
-AI_API_KEY = os.getenv('OPENAI_API_KEY', '')
-AI_MODEL = 'gpt-3.5-turbo'  # or 'gpt-4' for better quality
+# AI settings
+AI_OPENAI_KEY = os.getenv('OPENAI_API_KEY', '')
+AI_GEMINI_KEY = os.getenv('GEMINI_API_KEY', '')
+AI_API_KEY = AI_GEMINI_KEY or AI_OPENAI_KEY
+DEFAULT_AI_PROVIDER = 'demo'  # 'demo', 'gemini', or 'openai'
+AI_MODEL = 'gemini-1.5-flash' if AI_GEMINI_KEY else ('gpt-4o-mini' if AI_OPENAI_KEY else 'demo')
 AI_TEMPERATURE = 0.7
-AI_MAX_TOKENS = 2000
+AI_MAX_TOKENS = 3000
 
 # Question generation settings
 DEFAULT_NUM_QUESTIONS = 10
 MIN_QUESTIONS = 1
-MAX_QUESTIONS = 50
-ANSWERS_PER_QUESTION = 4  # Fixed as per requirements
+MAX_QUESTIONS = 100
+ANSWERS_PER_QUESTION = 4
 
 # Database settings
 DB_TIMEOUT = 30  # SQLite timeout in seconds
