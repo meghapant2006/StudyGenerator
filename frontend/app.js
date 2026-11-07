@@ -107,13 +107,29 @@ class AppState {
             });
         }
 
-        // Close user dropdown menu when clicking outside
+        // Close user dropdown menu, language menu, and mobile nav when clicking outside
         window.addEventListener('click', (e) => {
             const userMenu = document.getElementById('user-dropdown-menu');
             const userBtn = document.getElementById('user-profile-btn');
             if (userMenu && !userMenu.classList.contains('hidden')) {
                 if (!userMenu.contains(e.target) && (!userBtn || !userBtn.contains(e.target))) {
                     userMenu.classList.add('hidden');
+                }
+            }
+
+            const langMenu = document.getElementById('lang-dropdown-menu');
+            const langBtn = document.getElementById('lang-switcher-btn');
+            if (langMenu && !langMenu.classList.contains('hidden')) {
+                if (!langMenu.contains(e.target) && (!langBtn || !langBtn.contains(e.target))) {
+                    langMenu.classList.add('hidden');
+                }
+            }
+
+            const mobileMenu = document.getElementById('mobile-nav-panel');
+            const mobileBtn = document.getElementById('mobile-menu-btn');
+            if (mobileMenu && !mobileMenu.classList.contains('hidden')) {
+                if (!mobileMenu.contains(e.target) && (!mobileBtn || !mobileBtn.contains(e.target))) {
+                    mobileMenu.classList.add('hidden');
                 }
             }
         });
@@ -123,6 +139,9 @@ class AppState {
     // Navigation & View Routing
     // -------------------------------------------------------------
     navigateTo(viewName) {
+        this.closeMobileMenu();
+        this.closeLanguageMenu();
+
         // Stop timer if moving away from exam player
         if (this.currentView === 'player' && viewName !== 'player') {
             this.stopTimer();
@@ -143,10 +162,17 @@ class AppState {
 
         // Update nav button states
         document.querySelectorAll('.nav-btn').forEach(btn => {
-            if (btn.dataset.view === viewName) {
-                btn.className = 'nav-btn flex items-center gap-1.5 font-semibold bg-white text-indigo-600 rounded-full px-4 py-1.5 text-xs tracking-wide shadow-xs transition-all';
+            const isMatch = (btn.dataset.view === viewName);
+            const isMobile = Boolean(btn.closest('#mobile-nav-panel'));
+
+            if (isMobile) {
+                btn.className = isMatch
+                    ? 'nav-btn w-full flex items-center gap-3 text-left font-semibold text-sm px-4 py-2.5 rounded-xl text-[#654BFF] bg-indigo-50 transition-all'
+                    : 'nav-btn w-full flex items-center gap-3 text-left font-medium text-sm px-4 py-2.5 rounded-xl text-slate-700 hover:bg-slate-100 transition-all';
             } else {
-                btn.className = 'nav-btn flex items-center gap-1.5 font-medium text-slate-600 rounded-full px-4 py-1.5 text-xs tracking-wide hover:text-slate-900 hover:bg-slate-200/60 transition-all';
+                btn.className = isMatch
+                    ? 'nav-btn font-semibold text-[15px] text-[#654BFF] transition-colors cursor-pointer select-none whitespace-nowrap'
+                    : 'nav-btn font-medium text-[15px] text-slate-700 hover:text-[#654BFF] transition-colors cursor-pointer select-none whitespace-nowrap';
             }
         });
 
@@ -230,43 +256,43 @@ class AppState {
 
             return `
                 <tr class="hover:bg-slate-50/80 transition-colors group">
-                    <td class="py-3.5 px-4">
+                    <td class="py-4 px-4">
                         <div class="flex items-center gap-3">
-                            <div class="w-1.5 h-8 rounded-full bg-indigo-600"></div>
+                            <div class="w-2 h-9 rounded-full bg-indigo-600"></div>
                             <div>
-                                <div class="text-xs font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                                <div class="text-sm font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
                                     ${this.escapeHtml(exam.title)}
                                 </div>
-                                <div class="text-[11px] text-slate-500 truncate max-w-xs">
+                                <div class="text-xs text-slate-500 truncate max-w-sm mt-0.5">
                                     ${this.escapeHtml(exam.description || exam.source_ref || 'Academic Examination')}
                                 </div>
                             </div>
                         </div>
                     </td>
-                    <td class="py-3.5 px-4">${diffBadge}</td>
-                    <td class="py-3.5 px-4 font-semibold text-slate-800">
+                    <td class="py-4 px-4">${diffBadge}</td>
+                    <td class="py-4 px-4 font-semibold text-sm text-slate-800">
                         ${exam.num_questions || 0} Questions
                     </td>
-                    <td class="py-3.5 px-4 text-slate-600">
+                    <td class="py-4 px-4 text-sm text-slate-600">
                         <div class="flex items-center gap-1.5">
-                            <i data-lucide="clock" class="w-3.5 h-3.5 text-slate-400"></i>
+                            <i data-lucide="clock" class="w-4 h-4 text-slate-400"></i>
                             <span>${timeLimitStr}</span>
                         </div>
                     </td>
-                    <td class="py-3.5 px-4 text-slate-500">${createdStr}</td>
-                    <td class="py-3.5 px-4 text-right">
-                        <div class="inline-flex items-center gap-1">
-                            <button onclick="appState.loadExamAndPlay(${exam.id})" class="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-700 rounded-lg text-xs font-semibold transition-all">
+                    <td class="py-4 px-4 text-sm text-slate-500">${createdStr}</td>
+                    <td class="py-4 px-4 text-right">
+                        <div class="inline-flex items-center gap-1.5">
+                            <button onclick="appState.loadExamAndPlay(${exam.id})" class="px-3.5 py-1.5 bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-700 rounded-lg text-xs font-bold transition-all">
                                 Take
                             </button>
-                            <button onclick="appState.loadExamAndEdit(${exam.id})" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition-all">
+                            <button onclick="appState.loadExamAndEdit(${exam.id})" class="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition-all">
                                 Edit
                             </button>
-                            <button onclick="appState.loadExamAndExport(${exam.id})" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition-all">
+                            <button onclick="appState.loadExamAndExport(${exam.id})" class="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition-all">
                                 Export
                             </button>
-                            <button onclick="appState.deleteExam(${exam.id})" class="p-1 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-all" title="Delete Exam">
-                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            <button onclick="appState.deleteExam(${exam.id})" class="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-all" title="Delete Exam">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
                             </button>
                         </div>
                     </td>
@@ -611,12 +637,12 @@ class AppState {
                             const isCorr = ans.is_correct;
                             const letter = letters[optIdx] || (optIdx + 1);
                             return `
-                                <div class="flex items-center gap-2.5 p-2 rounded-lg text-xs border ${isCorr ? 'border-emerald-200 bg-emerald-50/70 text-emerald-950 font-medium' : 'border-slate-200/80 bg-slate-50/50 text-slate-700'}">
-                                    <span class="w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] ${isCorr ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'}">
+                                <div class="flex items-center gap-3 p-3 rounded-xl text-sm border ${isCorr ? 'border-emerald-200 bg-emerald-50/70 text-emerald-950 font-medium' : 'border-slate-200/80 bg-slate-50/50 text-slate-700'}">
+                                    <span class="w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${isCorr ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'}">
                                         ${letter}
                                     </span>
                                     <span class="flex-1">${this.escapeHtml(ans.text)}</span>
-                                    ${isCorr ? '<span class="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">CORRECT</span>' : ''}
+                                    ${isCorr ? '<span class="text-xs font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full">CORRECT</span>' : ''}
                                 </div>
                             `;
                         }).join('')}
@@ -624,38 +650,38 @@ class AppState {
                 `;
             } else {
                 optionsHtml = `
-                    <div class="bg-indigo-50/40 border border-indigo-100 rounded-xl p-3 text-xs space-y-1 mt-2">
-                        <span class="font-bold text-indigo-900 block text-[11px] uppercase tracking-wider">Evaluation Rubric & Model Solution:</span>
+                    <div class="bg-indigo-50/40 border border-indigo-100 rounded-xl p-4 text-sm space-y-1.5 mt-2">
+                        <span class="font-bold text-indigo-900 block text-xs uppercase tracking-wider">Evaluation Rubric & Model Solution:</span>
                         <p class="text-indigo-950 italic">${this.escapeHtml(q.correct_answer || q.rubric || 'Detailed answer evaluation criteria.')}</p>
                     </div>
                 `;
             }
 
             return `
-                <div class="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs space-y-3 relative group">
-                    <div class="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-7 shadow-xs space-y-4 relative group">
+                    <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100">
                         <div class="flex items-center gap-2">
-                            <span class="font-bold text-xs text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-2.5 py-0.5 rounded-full uppercase">
+                            <span class="font-bold text-xs text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-3 py-1 rounded-full uppercase">
                                 Q${idx + 1} • ${q.question_type.replace('_', ' ')}
                             </span>
-                            <span class="text-[11px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">
+                            <span class="text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-full">
                                 ${q.points} pt${q.points === 1 ? '' : 's'}
                             </span>
-                            ${q.source_page ? `<span class="text-[11px] text-slate-500">Page ${q.source_page}</span>` : ''}
+                            ${q.source_page ? `<span class="text-xs text-slate-500 font-medium">Page ${q.source_page}</span>` : ''}
                         </div>
-                        <div class="flex items-center gap-1.5">
-                            <button onclick="appState.openRegenerateModal(${q.id})" class="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold text-xs flex items-center gap-1 transition-all">
-                                <i data-lucide="wand-2" class="w-3 h-3"></i>
+                        <div class="flex items-center gap-2">
+                            <button onclick="appState.openRegenerateModal(${q.id})" class="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold text-xs flex items-center gap-1.5 transition-all">
+                                <i data-lucide="wand-2" class="w-3.5 h-3.5"></i>
                                 <span>AI Regenerate</span>
                             </button>
-                            <button onclick="appState.deleteQuestion(${q.id})" class="p-1 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-all" title="Delete Question">
-                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            <button onclick="appState.deleteQuestion(${q.id})" class="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-all" title="Delete Question">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
                             </button>
                         </div>
                     </div>
 
                     <!-- Editable Question Stem -->
-                    <div class="text-sm font-semibold text-slate-900 leading-snug">
+                    <div class="text-base sm:text-lg font-bold text-slate-900 leading-snug">
                         ${this.escapeHtml(q.question_text)}
                     </div>
 
@@ -956,16 +982,16 @@ class AppState {
                         <div class="player-opt-indicator">
                             <span class="player-opt-indicator-dot"></span>
                         </div>
-                        <span class="font-bold text-xs text-slate-700">(${letter})</span>
-                        <span class="text-xs text-slate-800 flex-1 leading-relaxed">${this.escapeHtml(ans.text)}</span>
+                        <span class="font-bold text-sm text-slate-700">(${letter})</span>
+                        <span class="text-base text-slate-800 flex-1 leading-relaxed">${this.escapeHtml(ans.text)}</span>
                     </div>
                 `;
             }).join('');
         } else {
             container.innerHTML = `
-                <div class="space-y-2">
-                    <label class="block text-xs font-semibold text-slate-700">Your Technical Response:</label>
-                    <textarea oninput="appState.playerSaveTextAnswer(${q.id}, this.value)" rows="6" class="w-full p-3 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="Type your full answer here...">${savedAnswer ? this.escapeHtml(savedAnswer) : ''}</textarea>
+                <div class="space-y-2.5">
+                    <label class="block text-sm font-semibold text-slate-700">Your Technical Response:</label>
+                    <textarea oninput="appState.playerSaveTextAnswer(${q.id}, this.value)" rows="6" class="w-full p-4 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="Type your full answer here...">${savedAnswer ? this.escapeHtml(savedAnswer) : ''}</textarea>
                 </div>
             `;
         }
@@ -1894,6 +1920,128 @@ class AppState {
         if (menu) menu.classList.add('hidden');
     }
 
+    toggleMobileMenu() {
+        const menu = document.getElementById('mobile-nav-panel');
+        if (menu) {
+            menu.classList.toggle('hidden');
+            this.renderIcons();
+        }
+    }
+
+    closeMobileMenu() {
+        const menu = document.getElementById('mobile-nav-panel');
+        if (menu) menu.classList.add('hidden');
+    }
+
+    openDemoModal() {
+        const modal = document.getElementById('modal-demo');
+        if (modal) {
+            modal.classList.remove('hidden');
+            this.renderIcons();
+        }
+    }
+
+    closeDemoModal() {
+        const modal = document.getElementById('modal-demo');
+        if (modal) modal.classList.add('hidden');
+    }
+
+    async loadSampleDemoExam() {
+        try {
+            const res = await fetch('/api/exams');
+            const data = await res.json();
+            if (data.exams && data.exams.length > 0) {
+                this.loadExamAndPlay(data.exams[0].id);
+            } else {
+                this.navigateTo('wizard');
+                this.switchWizardTab('topic');
+                const topicInput = document.getElementById('topic-subject-input');
+                if (topicInput) topicInput.value = 'Artificial Intelligence & Machine Learning Fundamentals';
+                this.showToast('Demo prompt loaded. Click Generate to build exam!', 'info');
+            }
+        } catch (e) {
+            this.navigateTo('wizard');
+        }
+    }
+
+    toggleLanguageMenu() {
+        const menu = document.getElementById('lang-dropdown-menu');
+        if (menu) {
+            menu.classList.toggle('hidden');
+            this.renderIcons();
+        }
+    }
+
+    closeLanguageMenu() {
+        const menu = document.getElementById('lang-dropdown-menu');
+        if (menu) menu.classList.add('hidden');
+    }
+
+    setLanguage(lang) {
+        this.currentLang = lang;
+        this.closeLanguageMenu();
+
+        const codeEl = document.getElementById('current-lang-code');
+        if (codeEl) codeEl.textContent = lang;
+
+        const checkEn = document.getElementById('lang-check-en');
+        const checkHi = document.getElementById('lang-check-hi');
+        if (checkEn) checkEn.classList.toggle('hidden', lang !== 'en');
+        if (checkHi) checkHi.classList.toggle('hidden', lang !== 'hi');
+
+        const translations = {
+            en: {
+                product: 'Product',
+                whosItFor: "Who's it for",
+                useCases: 'Use Cases',
+                faq: 'FAQ',
+                contact: 'Contact Us',
+                dashboard: 'Dashboard',
+                wizard: 'Create Exam',
+                editor: 'Question Bank',
+                player: 'Take Exam',
+                export: 'Export Hub',
+                login: 'Log in',
+                demo: 'Get a Demo'
+            },
+            hi: {
+                product: 'उत्पाद (Product)',
+                whosItFor: 'किसके लिए है',
+                useCases: 'उपयोग के उदाहरण',
+                faq: 'सवाल-जवाब (FAQ)',
+                contact: 'संपर्क करें',
+                dashboard: 'डैशबोर्ड',
+                wizard: 'परीक्षा बनाएं',
+                editor: 'प्रश्न बैंक',
+                player: 'परीक्षा दें',
+                export: 'निर्यात हब',
+                login: 'लॉग इन',
+                demo: 'डेमो देखें'
+            }
+        };
+
+        const t = translations[lang] || translations.en;
+        const setTxt = (id, txt) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = txt;
+        };
+
+        setTxt('nav-label-dashboard', t.dashboard);
+        setTxt('nav-label-wizard', t.wizard);
+        setTxt('nav-label-editor', t.editor);
+        setTxt('nav-label-player', t.player);
+        setTxt('nav-label-export', t.export);
+        setTxt('mobile-label-dashboard', t.dashboard);
+        setTxt('mobile-label-wizard', t.wizard);
+        setTxt('mobile-label-editor', t.editor);
+        setTxt('mobile-label-player', t.player);
+        setTxt('mobile-label-export', t.export);
+        setTxt('btn-label-login', t.login);
+        setTxt('btn-label-demo', t.demo);
+
+        this.showToast(lang === 'hi' ? 'भाषा हिन्दी (Hindi) में सेट की गई' : 'Language set to English (en)', 'info');
+    }
+
     updateAuthUI(user) {
         const loggedOutActions = document.getElementById('auth-logged-out-actions');
         const userContainer = document.getElementById('user-profile-container');
@@ -2001,6 +2149,55 @@ class AppState {
         const m = Math.floor(sec / 60);
         const s = sec % 60;
         return `${m}m ${s}s`;
+    }
+
+    scrollToSection(sectionId) {
+        this.closeMobileMenu();
+        if (this.currentView !== 'dashboard') {
+            this.navigateTo('dashboard');
+        }
+        setTimeout(() => {
+            const el = document.getElementById(`section-${sectionId}`) || document.getElementById(sectionId);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }, 60);
+    }
+
+    toggleFaq(btn) {
+        const item = btn.closest('.bg-white');
+        const content = item ? item.querySelector('.faq-content') : null;
+        const icon = btn.querySelector('[data-lucide="chevron-down"]');
+        if (!content) return;
+
+        const isHidden = content.classList.contains('hidden');
+        content.classList.toggle('hidden', !isHidden);
+        if (icon) {
+            icon.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+        }
+    }
+
+    openContactModal() {
+        this.closeMobileMenu();
+        const modal = document.getElementById('modal-contact');
+        if (modal) {
+            modal.classList.remove('hidden');
+            this.renderIcons();
+        }
+    }
+
+    closeContactModal() {
+        const modal = document.getElementById('modal-contact');
+        if (modal) modal.classList.add('hidden');
+    }
+
+    handleContactSubmit(event) {
+        event.preventDefault();
+        const nameInput = document.getElementById('contact-name');
+        const name = nameInput ? nameInput.value.trim() : 'Educator';
+        this.showToast(`Thank you, ${name}! Your inquiry has been sent to our academic support team.`, 'success');
+        this.closeContactModal();
+        event.target.reset();
     }
 
     escapeHtml(str) {
