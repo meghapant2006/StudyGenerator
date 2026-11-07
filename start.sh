@@ -17,13 +17,13 @@ if command -v python3 &>/dev/null; then
 elif command -v python &>/dev/null; then
     PY_CMD="python"
 else
-    echo "❌ Python not found. Please install Python 3.8+"
+    echo "[ERROR] Python not found. Please install Python 3.8+"
     exit 1
 fi
 
-echo "✔ Using $($PY_CMD --version)"
+echo "[OK] Using $($PY_CMD --version)"
 
 # Start Flask backend
 cd backend
-echo "🚀 Starting server at http://127.0.0.1:5000 ..."
+echo "[INFO] Starting server at http://127.0.0.1:5000 ..."
 $PY_CMD app.py

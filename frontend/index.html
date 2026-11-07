@@ -1,700 +1,1310 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StudyWise | AI Exam Generator & Assessment Platform</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>StudyWise AI - Academic Exam Generator & Assessment Platform</title>
+
+    <!-- Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+
+    <!-- Brand Favicon & Icons -->
+    <link rel="icon" type="image/png" href="assets/icon.png"/>
+    <link rel="shortcut icon" type="image/png" href="assets/icon.png"/>
+    <link rel="apple-touch-icon" href="assets/icon.png"/>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Tailwind CSS v3 -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            DEFAULT: '#4F46E5',
+                            hover: '#4338CA',
+                            light: '#EEF2FF',
+                            container: '#4F46E5',
+                            dim: '#C7D2FE',
+                            text: '#FFFFFF'
+                        },
+                        secondary: {
+                            DEFAULT: '#10B981',
+                            hover: '#059669',
+                            light: '#ECFDF5',
+                            container: '#6CF8BB',
+                            text: '#065F46'
+                        },
+                        surface: {
+                            canvas: '#F8FAFC',
+                            card: '#FFFFFF',
+                            muted: '#F1F5F9',
+                            border: '#E2E8F0',
+                            dark: '#0F172A'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    }
+                }
+            }
+        };
+    </script>
+
+    <!-- Custom Styling & Animations -->
+    <link rel="stylesheet" href="styles.css"/>
 </head>
-<body>
-    <!-- Top Navigation Bar -->
-    <nav class="navbar">
-        <div class="nav-container">
-            <div class="nav-brand" onclick="appState.navigateTo('dashboard')">
-                <div class="brand-logo">⚡</div>
-                <div class="brand-text">
-                    <span class="brand-title">StudyWise</span>
-                    <span class="brand-subtitle">AI Exam Generator</span>
+<body class="bg-surface-canvas font-sans text-slate-800 antialiased min-h-screen flex flex-col selection:bg-indigo-600 selection:text-white">
+
+    <!-- ==================== TOP NAVIGATION BAR ==================== -->
+    <header class="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm transition-all">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
+            
+            <!-- Brand Logo Left -->
+            <div class="flex items-center gap-3 cursor-pointer group" onclick="appState.navigateTo('dashboard')">
+                <img src="assets/icon.png" alt="StudyWise AI Icon" class="w-10 h-10 rounded-xl object-contain shadow-xs ring-1 ring-slate-200/90 bg-white p-0.5 group-hover:scale-105 transition-transform"/>
+                <div class="flex flex-col">
+                    <div class="flex items-center gap-2">
+                        <img src="assets/logo_transparent.png" alt="StudyWise AI" class="h-6 w-auto object-contain max-w-[150px]"/>
+                    </div>
+                    <span class="text-[11px] text-slate-500 font-normal -mt-0.5">Higher Ed Assessment Suite</span>
                 </div>
             </div>
 
-            <div class="nav-menu">
-                <button class="nav-link active" data-view="dashboard">
-                    <span class="nav-icon">📊</span> Dashboard
+            <!-- Navigation Pill Links (Center) -->
+            <nav class="hidden md:flex items-center gap-1 bg-slate-100 p-1 rounded-full border border-slate-200/80 shadow-inner">
+                <button class="nav-btn flex items-center gap-1.5 font-semibold bg-white text-indigo-600 rounded-full px-4 py-1.5 text-xs tracking-wide shadow-xs transition-all" data-view="dashboard">
+                    <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i>
+                    <span>Dashboard</span>
                 </button>
-                <button class="nav-link" data-view="wizard">
-                    <span class="nav-icon">✨</span> Create Exam
+                <button class="nav-btn flex items-center gap-1.5 font-medium text-slate-600 rounded-full px-4 py-1.5 text-xs tracking-wide hover:text-slate-900 hover:bg-slate-200/60 transition-all" data-view="wizard">
+                    <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+                    <span>Create Exam</span>
                 </button>
-                <button class="nav-link" data-view="editor">
-                    <span class="nav-icon">📝</span> Question Bank
+                <button class="nav-btn flex items-center gap-1.5 font-medium text-slate-600 rounded-full px-4 py-1.5 text-xs tracking-wide hover:text-slate-900 hover:bg-slate-200/60 transition-all" data-view="editor">
+                    <i data-lucide="help-circle" class="w-3.5 h-3.5"></i>
+                    <span>Question Bank</span>
                 </button>
-                <button class="nav-link" data-view="player">
-                    <span class="nav-icon">🎯</span> Take Exam
+                <button class="nav-btn flex items-center gap-1.5 font-medium text-slate-600 rounded-full px-4 py-1.5 text-xs tracking-wide hover:text-slate-900 hover:bg-slate-200/60 transition-all" data-view="player">
+                    <i data-lucide="play-circle" class="w-3.5 h-3.5"></i>
+                    <span>Take Exam</span>
                 </button>
-                <button class="nav-link" data-view="export">
-                    <span class="nav-icon">📥</span> Export Hub
+                <button class="nav-btn flex items-center gap-1.5 font-medium text-slate-600 rounded-full px-4 py-1.5 text-xs tracking-wide hover:text-slate-900 hover:bg-slate-200/60 transition-all" data-view="export">
+                    <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                    <span>Export Hub</span>
                 </button>
-            </div>
+            </nav>
 
-            <div class="nav-actions">
-                <button id="provider-badge" class="badge-provider" onclick="appState.openSettings()">
-                    <span class="status-dot"></span>
+            <!-- Right Utility Actions -->
+            <div class="flex items-center gap-3">
+                <!-- AI Engine Status Badge -->
+                <button id="provider-badge" onclick="appState.openSettings()" class="hidden sm:flex items-center gap-2 bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-3 py-1 rounded-full text-xs font-semibold hover:bg-emerald-100 transition-colors" title="Click to configure AI providers">
+                    <span class="relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
                     <span id="provider-label">Demo Engine</span>
                 </button>
-                <button class="btn-icon" title="Settings & API Keys" onclick="appState.openSettings()">
-                    ⚙️
+
+                <!-- Settings Trigger Button -->
+                <button aria-label="Settings" onclick="appState.openSettings()" class="p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-all active:scale-95 flex items-center justify-center" type="button" title="Settings & API Keys">
+                    <i data-lucide="settings" class="w-4 h-4"></i>
                 </button>
+
+                <!-- Educator Profile Pill -->
+                <div class="h-9 w-9 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs ring-2 ring-slate-100 border border-indigo-200 cursor-default" title="Educator Role">
+                    ED
+                </div>
             </div>
         </div>
-    </nav>
+    </header>
 
-    <!-- Main Application Container -->
-    <main class="app-main">
+    <!-- ==================== MAIN CONTENT CANVAS ==================== -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         <!-- ================= VIEW 1: DASHBOARD ================= -->
-        <section id="view-dashboard" class="app-view">
-            <div class="view-header">
+        <section id="view-dashboard" class="app-view space-y-8">
+            <!-- Header & Action Row -->
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                    <h1 class="view-title">Assessment Dashboard</h1>
-                    <p class="view-desc">Create, manage, grade, and export academic exams powered by AI.</p>
+                    <h1 class="text-2xl lg:text-3xl font-bold text-slate-900 tracking-tight">Assessment Dashboard</h1>
+                    <p class="text-sm text-slate-500 mt-1">Create, manage, evaluate, and export academic examinations powered by AI</p>
                 </div>
-                <button class="btn btn-primary" onclick="appState.navigateTo('wizard')">
-                    <span>➕</span> Create New Exam
-                </button>
-            </div>
-
-            <!-- Stats Overview Cards -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon bg-indigo">📚</div>
-                    <div class="stat-data">
-                        <span class="stat-num" id="stat-total-exams">0</span>
-                        <span class="stat-label">Total Exams</span>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon bg-emerald">❓</div>
-                    <div class="stat-data">
-                        <span class="stat-num" id="stat-total-questions">0</span>
-                        <span class="stat-label">Questions Generated</span>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon bg-amber">📝</div>
-                    <div class="stat-data">
-                        <span class="stat-num" id="stat-total-attempts">0</span>
-                        <span class="stat-label">Student Attempts</span>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon bg-purple">🎯</div>
-                    <div class="stat-data">
-                        <span class="stat-num" id="stat-avg-score">0%</span>
-                        <span class="stat-label">Average Score</span>
-                    </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="appState.navigateTo('export')" class="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium text-xs px-4 py-2.5 rounded-xl shadow-xs transition-all flex items-center gap-2">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        <span>Export Hub</span>
+                    </button>
+                    <button onclick="appState.navigateTo('wizard')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs px-4 py-2.5 rounded-xl shadow-sm hover:shadow transition-all active:scale-95 flex items-center gap-2">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        <span>Create New Exam</span>
+                    </button>
                 </div>
             </div>
 
-            <!-- Quick Action Banners -->
-            <div class="action-banners-grid">
-                <div class="action-banner" onclick="appState.startWizardWithSource('pdf')">
-                    <div class="banner-icon">📄</div>
-                    <div class="banner-content">
-                        <h3>From PDF or Document</h3>
-                        <p>Extract syllabus or textbook chapters with intelligent OCR text extraction.</p>
+            <!-- 4-Column Stat Metric Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                <!-- Card 1: Total Exams -->
+                <div class="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs hover:shadow-md transition-all">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Exams Created</span>
+                        <div class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                            <i data-lucide="book-open" class="w-4 h-4"></i>
+                        </div>
                     </div>
-                    <span class="banner-arrow">→</span>
+                    <div class="flex items-baseline justify-between">
+                        <div class="text-3xl font-bold text-slate-900" id="stat-total-exams">0</div>
+                        <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-full">
+                            <i data-lucide="trending-up" class="w-3 h-3 text-emerald-600"></i>
+                            <span>Active</span>
+                        </span>
+                    </div>
                 </div>
-                <div class="action-banner" onclick="appState.startWizardWithSource('topic')">
-                    <div class="banner-icon">💡</div>
-                    <div class="banner-content">
-                        <h3>From Topic / Curriculum</h3>
-                        <p>Generate assessments directly from a subject prompt without uploading files.</p>
+
+                <!-- Card 2: Questions Generated -->
+                <div class="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs hover:shadow-md transition-all">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Questions Generated</span>
+                        <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                            <i data-lucide="help-circle" class="w-4 h-4"></i>
+                        </div>
                     </div>
-                    <span class="banner-arrow">→</span>
+                    <div class="flex items-baseline justify-between">
+                        <div class="text-3xl font-bold text-slate-900" id="stat-total-questions">0</div>
+                        <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-2 py-0.5 rounded-full">
+                            <i data-lucide="sparkles" class="w-3 h-3 text-indigo-600"></i>
+                            <span>AI Verified</span>
+                        </span>
+                    </div>
                 </div>
-                <div class="action-banner" onclick="appState.startWizardWithSource('text')">
-                    <div class="banner-icon">📋</div>
-                    <div class="banner-content">
-                        <h3>From Pasted Notes</h3>
-                        <p>Paste lecture notes, study guides, or summaries to generate customized tests.</p>
+
+                <!-- Card 3: Student Attempts -->
+                <div class="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs hover:shadow-md transition-all">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Student Attempts</span>
+                        <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                            <i data-lucide="clipboard-check" class="w-4 h-4"></i>
+                        </div>
                     </div>
-                    <span class="banner-arrow">→</span>
+                    <div class="flex items-baseline justify-between">
+                        <div class="text-3xl font-bold text-slate-900" id="stat-total-attempts">0</div>
+                        <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200/60 px-2 py-0.5 rounded-full">
+                            <i data-lucide="activity" class="w-3 h-3 text-amber-600"></i>
+                            <span>Live Graded</span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Card 4: Average Score -->
+                <div class="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs hover:shadow-md transition-all">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Average Student Score</span>
+                        <div class="w-9 h-9 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center">
+                            <i data-lucide="target" class="w-4 h-4"></i>
+                        </div>
+                    </div>
+                    <div class="flex items-baseline justify-between">
+                        <div class="text-3xl font-bold text-slate-900" id="stat-avg-score">0%</div>
+                        <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-teal-700 bg-teal-50 border border-teal-200/60 px-2 py-0.5 rounded-full">
+                            <i data-lucide="award" class="w-3 h-3 text-teal-600"></i>
+                            <span>Cohort Avg</span>
+                        </span>
+                    </div>
                 </div>
             </div>
 
-            <!-- Recent Exams Section -->
-            <div class="content-panel">
-                <div class="panel-header">
-                    <h2>Recent Exams</h2>
-                    <div class="search-box">
-                        <input type="text" id="exams-search" placeholder="Search exams by title or topic..." oninput="appState.filterExams(this.value)">
+            <!-- Quick-Start Exam Creation Banners (3 Bento Cards) -->
+            <div class="space-y-4">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900 tracking-tight">Quick-Start Exam Creation</h2>
+                    <p class="text-xs text-slate-500">Select your source material to trigger intelligent exam generation</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <!-- Banner 1: Document Upload -->
+                    <div onclick="appState.startFromSource('pdf')" class="group bg-white border border-slate-200/80 hover:border-indigo-400 rounded-2xl p-6 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between relative overflow-hidden cursor-pointer">
+                        <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <div>
+                            <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+                                <i data-lucide="file-up" class="w-6 h-6"></i>
+                            </div>
+                            <h3 class="text-base font-bold text-slate-900 mb-1">From PDF or Document</h3>
+                            <p class="text-xs text-slate-500 leading-relaxed mb-4">
+                                Upload syllabus chapters or lecture slides with intelligent OCR text extraction.
+                            </p>
+                            <div class="flex flex-wrap gap-1.5 mb-5">
+                                <span class="bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full text-[11px] font-medium">PDF, TXT</span>
+                                <span class="bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full text-[11px] font-medium">OCR Fallback</span>
+                            </div>
+                        </div>
+                        <div class="inline-flex items-center gap-1.5 text-xs text-indigo-600 group-hover:text-indigo-700 font-semibold transition-colors">
+                            <span>Upload Document</span>
+                            <i data-lucide="arrow-right" class="w-3.5 h-3.5 transition-transform group-hover:translate-x-1"></i>
+                        </div>
+                    </div>
+
+                    <!-- Banner 2: Topic / Prompt -->
+                    <div onclick="appState.startFromSource('topic')" class="group bg-white border border-slate-200/80 hover:border-indigo-400 rounded-2xl p-6 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between relative overflow-hidden cursor-pointer">
+                        <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <div>
+                            <div class="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+                                <i data-lucide="graduation-cap" class="w-6 h-6"></i>
+                            </div>
+                            <h3 class="text-base font-bold text-slate-900 mb-1">From Topic / Curriculum</h3>
+                            <p class="text-xs text-slate-500 leading-relaxed mb-4">
+                                Synthesize complete assessments directly from a subject prompt without uploading files.
+                            </p>
+                            <div class="flex flex-wrap gap-1.5 mb-5">
+                                <span class="bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full text-[11px] font-medium">Bloom's Taxonomy</span>
+                                <span class="bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full text-[11px] font-medium">Custom Rubrics</span>
+                            </div>
+                        </div>
+                        <div class="inline-flex items-center gap-1.5 text-xs text-indigo-600 group-hover:text-indigo-700 font-semibold transition-colors">
+                            <span>Enter Topic</span>
+                            <i data-lucide="arrow-right" class="w-3.5 h-3.5 transition-transform group-hover:translate-x-1"></i>
+                        </div>
+                    </div>
+
+                    <!-- Banner 3: Pasted Notes -->
+                    <div onclick="appState.startFromSource('notes')" class="group bg-white border border-slate-200/80 hover:border-indigo-400 rounded-2xl p-6 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between relative overflow-hidden cursor-pointer">
+                        <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <div>
+                            <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+                                <i data-lucide="clipboard-paste" class="w-6 h-6"></i>
+                            </div>
+                            <h3 class="text-base font-bold text-slate-900 mb-1">From Pasted Notes</h3>
+                            <p class="text-xs text-slate-500 leading-relaxed mb-4">
+                                Paste raw lecture notes, reading summaries, or textbook sections to generate tests instantly.
+                            </p>
+                            <div class="flex flex-wrap gap-1.5 mb-5">
+                                <span class="bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full text-[11px] font-medium">Instant Parse</span>
+                                <span class="bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full text-[11px] font-medium">Up to 20k words</span>
+                            </div>
+                        </div>
+                        <div class="inline-flex items-center gap-1.5 text-xs text-indigo-600 group-hover:text-indigo-700 font-semibold transition-colors">
+                            <span>Paste Notes</span>
+                            <i data-lucide="arrow-right" class="w-3.5 h-3.5 transition-transform group-hover:translate-x-1"></i>
+                        </div>
                     </div>
                 </div>
-                <div id="exams-table-container">
-                    <div class="empty-state">
-                        <span class="empty-icon">📂</span>
-                        <p>No exams created yet. Click "Create New Exam" to generate your first test!</p>
+            </div>
+
+            <!-- Recent Exams Data Table Section -->
+            <div class="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs">
+                <!-- Table Header Bar -->
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-5 border-b border-slate-100">
+                    <div class="flex items-center gap-3">
+                        <h2 class="text-lg font-bold text-slate-900 tracking-tight">Recent Examinations</h2>
+                        <span id="exam-count-badge" class="bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full text-xs font-semibold">0 assessments</span>
                     </div>
+                    <div class="flex items-center gap-3">
+                        <div class="relative w-full sm:w-72">
+                            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            <input id="exam-search-input" oninput="appState.filterExams(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all" placeholder="Search exams by title or topic..." type="text"/>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modern Data Table -->
+                <div class="overflow-x-auto mt-2">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-100 text-slate-500 text-[11px] font-semibold tracking-wider uppercase">
+                                <th class="py-3.5 px-4">EXAM TITLE</th>
+                                <th class="py-3.5 px-4">DIFFICULTY</th>
+                                <th class="py-3.5 px-4">QUESTIONS</th>
+                                <th class="py-3.5 px-4">TIME LIMIT</th>
+                                <th class="py-3.5 px-4">CREATED</th>
+                                <th class="py-3.5 px-4 text-right">ACTIONS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dashboard-exams-tbody" class="divide-y divide-slate-100 text-xs">
+                            <!-- Injected dynamically via app.js -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Empty State Placeholder (when 0 exams) -->
+                <div id="exams-empty-state" class="hidden text-center py-12">
+                    <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
+                        <i data-lucide="file-question" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-sm font-semibold text-slate-900">No exams generated yet</h3>
+                    <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto">Upload a syllabus or provide a subject prompt to create your first examination.</p>
+                    <button onclick="appState.navigateTo('wizard')" class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs px-4 py-2 rounded-xl transition-all inline-flex items-center gap-1.5">
+                        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                        <span>Create Your First Exam</span>
+                    </button>
                 </div>
             </div>
         </section>
 
         <!-- ================= VIEW 2: EXAM CREATION WIZARD ================= -->
-        <section id="view-wizard" class="app-view hidden">
-            <div class="view-header">
+        <section id="view-wizard" class="app-view hidden space-y-8">
+            <!-- Header & Context -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 class="view-title">Create New Exam</h1>
-                    <p class="view-desc">Configure your source material and assessment parameters.</p>
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[11px] font-semibold border border-indigo-200/60">Step 1 of 2</span>
+                        <span class="text-xs text-slate-500">Assessment Generator</span>
+                    </div>
+                    <h1 class="text-2xl lg:text-3xl font-bold text-slate-900 tracking-tight">Create New Exam</h1>
+                    <p class="text-xs sm:text-sm text-slate-500 mt-1">Configure your source context and assessment specifications with AI.</p>
                 </div>
-                <button class="btn btn-secondary" onclick="appState.navigateTo('dashboard')">
-                    ← Back to Dashboard
-                </button>
+                <div>
+                    <button onclick="appState.navigateTo('dashboard')" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-xs text-xs font-medium transition-all">
+                        <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
+                        <span>Back to Dashboard</span>
+                    </button>
+                </div>
             </div>
 
-            <div class="wizard-grid">
-                <!-- Left: Source Selection -->
-                <div class="wizard-card">
-                    <h2 class="card-title">1. Source Material</h2>
-                    
-                    <!-- Source Tabs -->
-                    <div class="tab-pills">
-                        <button class="tab-pill active" data-source="pdf" onclick="appState.switchSourceTab('pdf')">
-                            📄 Upload PDF
+            <!-- Bento Two-Column Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                
+                <!-- Left Column: Source Material (6 cols) -->
+                <div class="lg:col-span-6 bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-6">
+                    <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                        <div class="flex items-center gap-3">
+                            <span class="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs">1</span>
+                            <div>
+                                <h2 class="text-base font-bold text-slate-900">Source Material</h2>
+                                <p class="text-xs text-slate-500">Provide document context or topic prompt</p>
+                            </div>
+                        </div>
+                        <i data-lucide="book" class="w-5 h-5 text-slate-400"></i>
+                    </div>
+
+                    <!-- Source Selector Segmented Tabs -->
+                    <div class="grid grid-cols-3 gap-1 bg-slate-100 p-1.5 rounded-xl border border-slate-200/80">
+                        <button id="tab-btn-pdf" onclick="appState.switchWizardTab('pdf')" class="wizard-tab py-2 px-3 rounded-lg bg-white text-indigo-600 font-semibold shadow-xs text-xs flex items-center justify-center gap-1.5 transition-all">
+                            <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+                            <span>Upload PDF</span>
                         </button>
-                        <button class="tab-pill" data-source="topic" onclick="appState.switchSourceTab('topic')">
-                            💡 Topic / Prompt
+                        <button id="tab-btn-topic" onclick="appState.switchWizardTab('topic')" class="wizard-tab py-2 px-3 rounded-lg text-slate-600 hover:text-slate-900 font-medium text-xs flex items-center justify-center gap-1.5 transition-all">
+                            <i data-lucide="brain" class="w-3.5 h-3.5"></i>
+                            <span>Topic / Prompt</span>
                         </button>
-                        <button class="tab-pill" data-source="text" onclick="appState.switchSourceTab('text')">
-                            📋 Paste Text
+                        <button id="tab-btn-text" onclick="appState.switchWizardTab('text')" class="wizard-tab py-2 px-3 rounded-lg text-slate-600 hover:text-slate-900 font-medium text-xs flex items-center justify-center gap-1.5 transition-all">
+                            <i data-lucide="clipboard-paste" class="w-3.5 h-3.5"></i>
+                            <span>Paste Text</span>
                         </button>
                     </div>
 
-                    <!-- PDF Upload Pane -->
-                    <div id="pane-source-pdf" class="source-pane">
-                        <div class="upload-dropzone" id="dropzone">
-                            <input type="file" id="pdf-file-input" accept=".pdf,.txt" class="file-hidden">
-                            <label for="pdf-file-input" class="dropzone-label">
-                                <span class="dropzone-icon">☁️</span>
-                                <span class="dropzone-text"><strong>Click to upload</strong> or drag & drop</span>
-                                <span class="dropzone-hint">PDF or TXT documents (Max 50MB)</span>
-                            </label>
+                    <!-- Panel 1: PDF Upload -->
+                    <div id="panel-source-pdf" class="space-y-4">
+                        <div id="pdf-dropzone" class="border-2 border-dashed border-slate-200 hover:border-indigo-500 rounded-2xl p-8 flex flex-col items-center justify-center bg-slate-50/50 hover:bg-slate-50 transition-all cursor-pointer text-center">
+                            <input type="file" id="pdf-file-input" accept=".pdf,.txt" class="hidden" onchange="appState.handleFileSelect(event)"/>
+                            <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-3">
+                                <i data-lucide="upload-cloud" class="w-6 h-6"></i>
+                            </div>
+                            <p class="text-sm font-semibold text-slate-800">Click to upload or drag & drop document</p>
+                            <p class="text-xs text-slate-500 mt-1">PDF or TXT documents (Max 50MB)</p>
+                            <div class="mt-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-200/60 text-[11px] font-medium text-slate-700">
+                                <i data-lucide="shield-check" class="w-3 h-3 text-emerald-600"></i>
+                                <span>OCR Text Extraction Enabled</span>
+                            </div>
                         </div>
-                        <div id="pdf-upload-summary" class="upload-summary hidden"></div>
+
+                        <!-- Uploaded Document Summary Card (Initially Hidden) -->
+                        <div id="pdf-uploaded-card" class="hidden border border-indigo-200/80 bg-indigo-50/30 rounded-xl p-4 shadow-xs">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="flex items-start gap-3">
+                                    <div class="w-10 h-10 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0">
+                                        <i data-lucide="file-check-2" class="w-5 h-5"></i>
+                                    </div>
+                                    <div>
+                                        <div class="flex items-center gap-2">
+                                            <h3 class="text-xs font-bold text-slate-900 truncate max-w-xs" id="pdf-filename-display">document.pdf</h3>
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                                                <i data-lucide="check" class="w-2.5 h-2.5"></i> Ready
+                                            </span>
+                                        </div>
+                                        <p class="text-[11px] text-slate-500 mt-0.5" id="pdf-filesize-display">4.2 MB • Processed</p>
+                                    </div>
+                                </div>
+                                <button onclick="appState.removeSelectedFile()" class="text-xs font-semibold text-rose-600 hover:text-rose-800">Remove</button>
+                            </div>
+                            <!-- Metadata chips -->
+                            <div class="mt-3 pt-3 border-t border-indigo-100/70 flex flex-wrap gap-2 text-[11px]">
+                                <span class="px-2 py-0.5 rounded bg-white text-slate-700 border border-slate-200">
+                                    Total Pages: <strong class="text-slate-900" id="pdf-pages-display">0</strong>
+                                </span>
+                                <span class="px-2 py-0.5 rounded bg-white text-slate-700 border border-slate-200">
+                                    Words Extracted: <strong class="text-slate-900" id="pdf-words-display">0</strong>
+                                </span>
+                            </div>
+                            <!-- Excerpt preview -->
+                            <div class="mt-3 bg-white border border-slate-200/80 rounded-lg p-3 text-[11px] text-slate-600 italic leading-relaxed max-h-24 overflow-y-auto" id="pdf-excerpt-display">
+                                Document excerpt will appear here.
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Topic Prompt Pane -->
-                    <div id="pane-source-topic" class="source-pane hidden">
-                        <div class="form-group">
-                            <label for="input-topic">Subject or Curriculum Topic:</label>
-                            <input type="text" id="input-topic" placeholder="e.g. Operating Systems: CPU Scheduling Algorithms">
-                            <span class="field-hint">Specify the subject, concepts, and key learning objectives.</span>
+                    <!-- Panel 2: Topic / Prompt -->
+                    <div id="panel-source-topic" class="hidden space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-800 mb-1" for="topic-subject-input">Subject / Curriculum Topic</label>
+                            <input id="topic-subject-input" type="text" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="e.g., Operating Systems: Process Scheduling and Deadlocks"/>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-800 mb-1" for="topic-objectives-input">Key Learning Objectives & Focus Areas (Optional)</label>
+                            <textarea id="topic-objectives-input" rows="4" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="e.g., Focus on Round-Robin vs. Priority Scheduling, Banker's Algorithm, Semaphore mutex mechanisms."></textarea>
                         </div>
                     </div>
 
-                    <!-- Paste Text Pane -->
-                    <div id="pane-source-text" class="source-pane hidden">
-                        <div class="form-group">
-                            <label for="input-raw-text">Paste Lecture Notes / Syllabus:</label>
-                            <textarea id="input-raw-text" rows="8" placeholder="Paste study notes, definitions, or article excerpts here..."></textarea>
-                            <span class="field-hint">The AI will extract key concepts and formulate questions.</span>
+                    <!-- Panel 3: Paste Text -->
+                    <div id="panel-source-text" class="hidden space-y-3">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-xs font-semibold text-slate-800" for="pasted-text-input">Lecture Notes / Study Guide Text</label>
+                            <span class="text-[11px] text-slate-400" id="pasted-word-count">0 words</span>
                         </div>
+                        <textarea id="pasted-text-input" rows="8" oninput="appState.updatePastedWordCount(this.value)" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="Paste your course notes, textbook excerpts, or review sheets here (up to 20,000 words)..."></textarea>
                     </div>
                 </div>
 
-                <!-- Right: Exam Configuration -->
-                <div class="wizard-card">
-                    <h2 class="card-title">2. Exam Configuration</h2>
-
-                    <div class="form-group">
-                        <label for="exam-title-input">Exam Title (Optional):</label>
-                        <input type="text" id="exam-title-input" placeholder="e.g. Midterm Assessment: Computer Science">
+                <!-- Right Column: Exam Configuration (6 cols) -->
+                <div class="lg:col-span-6 bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-5">
+                    <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                        <div class="flex items-center gap-3">
+                            <span class="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs">2</span>
+                            <div>
+                                <h2 class="text-base font-bold text-slate-900">Exam Configuration</h2>
+                                <p class="text-xs text-slate-500">Calibrate item distribution & academic parameters</p>
+                            </div>
+                        </div>
+                        <i data-lucide="sliders" class="w-5 h-5 text-slate-400"></i>
                     </div>
 
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="select-difficulty">Difficulty Level:</label>
-                            <select id="select-difficulty">
-                                <option value="easy">Easy (Recall & Basics)</option>
-                                <option value="medium" selected>Medium (Standard Comprehensive)</option>
-                                <option value="hard">Hard (Analysis & Application)</option>
-                                <option value="mixed">Mixed (Graduated Difficulty)</option>
+                    <!-- Exam Title -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-800 mb-1" for="exam-title-input">Exam Title</label>
+                        <input id="exam-title-input" type="text" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="e.g., Midterm Assessment: Operating Systems Concepts"/>
+                    </div>
+
+                    <!-- 2-Column: Difficulty & Target Level -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-800 mb-1" for="exam-difficulty-select">Difficulty Tier</label>
+                            <select id="exam-difficulty-select" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
+                                <option value="easy">Easy (Foundational Recall)</option>
+                                <option value="medium" selected>Medium (Proficiency & Application)</option>
+                                <option value="hard">Hard (Rigorous Analysis & Synthesis)</option>
                             </select>
                         </div>
-
-                        <div class="form-group">
-                            <label for="select-audience">Target Education Level:</label>
-                            <select id="select-audience">
-                                <option value="Middle School">Middle School</option>
-                                <option value="High School">High School</option>
-                                <option value="Undergraduate" selected>Undergraduate / College</option>
-                                <option value="Professional">Professional Certification</option>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-800 mb-1" for="exam-target-audience">Academic Level</label>
+                            <select id="exam-target-audience" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
+                                <option value="high_school">High School / AP Prep</option>
+                                <option value="undergraduate" selected>Undergraduate Degree</option>
+                                <option value="postgraduate">Postgraduate / Master's</option>
+                                <option value="certification">Professional Licensure</option>
                             </select>
                         </div>
                     </div>
 
-                    <!-- Question Types Breakdown -->
-                    <div class="form-group">
-                        <label>Question Formats & Quantities:</label>
-                        <div class="q-type-sliders">
-                            <div class="q-type-row">
-                                <span class="q-type-name">🔘 Multiple Choice (MCQ)</span>
-                                <input type="number" id="count-mcq" min="0" max="50" value="5" class="input-qty">
+                    <!-- Question Distribution Steppers Box -->
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+                        <div class="flex items-center justify-between pb-2 border-b border-slate-200/70">
+                            <div>
+                                <span class="text-xs font-bold text-slate-900">Question Item Distribution</span>
+                                <p class="text-[11px] text-slate-500">Configure item count per pedagogical format</p>
                             </div>
-                            <div class="q-type-row">
-                                <span class="q-type-name">⚖️ True / False</span>
-                                <input type="number" id="count-tf" min="0" max="30" value="3" class="input-qty">
+                            <span id="wizard-total-questions-badge" class="px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs border border-indigo-200">
+                                Total: 10 Items
+                            </span>
+                        </div>
+
+                        <!-- MCQ Stepper -->
+                        <div class="flex items-center justify-between bg-white p-2.5 rounded-lg border border-slate-200/80">
+                            <div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-xs font-bold text-slate-800">Multiple Choice (MCQ)</span>
+                                    <span class="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-slate-100 text-slate-600">Bloom L1-L3</span>
+                                </div>
+                                <p class="text-[11px] text-slate-500">4 options with distractors & pedagogical rationale</p>
                             </div>
-                            <div class="q-type-row">
-                                <span class="q-type-name">✏️ Short Answer</span>
-                                <input type="number" id="count-sa" min="0" max="20" value="2" class="input-qty">
+                            <div class="flex items-center gap-2">
+                                <button onclick="appState.adjustQuestionCount('mcq', -1)" type="button" class="w-7 h-7 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs">
+                                    <i data-lucide="minus" class="w-3 h-3"></i>
+                                </button>
+                                <span id="count-mcq" class="w-6 text-center font-bold text-xs text-slate-900">5</span>
+                                <button onclick="appState.adjustQuestionCount('mcq', 1)" type="button" class="w-7 h-7 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs">
+                                    <i data-lucide="plus" class="w-3 h-3"></i>
+                                </button>
                             </div>
-                            <div class="q-type-row">
-                                <span class="q-type-name">📑 Essay / Analytical</span>
-                                <input type="number" id="count-essay" min="0" max="10" value="0" class="input-qty">
+                        </div>
+
+                        <!-- True/False Stepper -->
+                        <div class="flex items-center justify-between bg-white p-2.5 rounded-lg border border-slate-200/80">
+                            <div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-xs font-bold text-slate-800">True / False</span>
+                                    <span class="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-slate-100 text-slate-600">Bloom L1</span>
+                                </div>
+                                <p class="text-[11px] text-slate-500">Conceptual verification with counter-evidence</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="appState.adjustQuestionCount('tf', -1)" type="button" class="w-7 h-7 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs">
+                                    <i data-lucide="minus" class="w-3 h-3"></i>
+                                </button>
+                                <span id="count-tf" class="w-6 text-center font-bold text-xs text-slate-900">2</span>
+                                <button onclick="appState.adjustQuestionCount('tf', 1)" type="button" class="w-7 h-7 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs">
+                                    <i data-lucide="plus" class="w-3 h-3"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Short Answer Stepper -->
+                        <div class="flex items-center justify-between bg-white p-2.5 rounded-lg border border-slate-200/80">
+                            <div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-xs font-bold text-slate-800">Short Answer</span>
+                                    <span class="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-slate-100 text-slate-600">Bloom L3-L4</span>
+                                </div>
+                                <p class="text-[11px] text-slate-500">Targeted technical definitions & scoring rubrics</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="appState.adjustQuestionCount('short', -1)" type="button" class="w-7 h-7 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs">
+                                    <i data-lucide="minus" class="w-3 h-3"></i>
+                                </button>
+                                <span id="count-short" class="w-6 text-center font-bold text-xs text-slate-900">2</span>
+                                <button onclick="appState.adjustQuestionCount('short', 1)" type="button" class="w-7 h-7 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs">
+                                    <i data-lucide="plus" class="w-3 h-3"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Essay Stepper -->
+                        <div class="flex items-center justify-between bg-white p-2.5 rounded-lg border border-slate-200/80">
+                            <div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-xs font-bold text-slate-800">Essay / Analytical</span>
+                                    <span class="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-slate-100 text-slate-600">Bloom L5-L6</span>
+                                </div>
+                                <p class="text-[11px] text-slate-500">Deep synthetic evaluation with multi-part rubrics</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="appState.adjustQuestionCount('essay', -1)" type="button" class="w-7 h-7 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs">
+                                    <i data-lucide="minus" class="w-3 h-3"></i>
+                                </button>
+                                <span id="count-essay" class="w-6 text-center font-bold text-xs text-slate-900">1</span>
+                                <button onclick="appState.adjustQuestionCount('essay', 1)" type="button" class="w-7 h-7 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs">
+                                    <i data-lucide="plus" class="w-3 h-3"></i>
+                                </button>
                             </div>
                         </div>
                     </div>
 
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="input-time-limit">Time Limit (Minutes):</label>
-                            <input type="number" id="input-time-limit" min="0" max="300" value="30">
-                            <span class="field-hint">0 for untimed test</span>
+                    <!-- 2-Column: Time Limit & Passing Score -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="text-xs font-semibold text-slate-800" for="exam-time-limit">Time Limit (Mins)</label>
+                                <span class="text-[10px] text-slate-400">0 = untimed</span>
+                            </div>
+                            <input id="exam-time-limit" type="number" value="30" min="0" max="300" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"/>
                         </div>
-                        <div class="form-group">
-                            <label for="input-pass-score">Passing Score (%):</label>
-                            <input type="number" id="input-pass-score" min="10" max="100" value="70">
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="text-xs font-semibold text-slate-800" for="exam-passing-score">Passing Mark (%)</label>
+                                <span class="text-[10px] text-slate-400">Default 75%</span>
+                            </div>
+                            <input id="exam-passing-score" type="number" value="75" min="10" max="100" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"/>
                         </div>
                     </div>
 
-                    <button id="btn-generate-exam" class="btn btn-primary btn-block btn-lg" onclick="appState.handleGenerateExam()">
-                        <span>✨ Generate Exam with AI</span>
-                    </button>
+                    <!-- Primary Full-Width CTA -->
+                    <div class="pt-2">
+                        <button id="btn-generate-exam" onclick="appState.generateExam()" class="w-full py-3.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm flex items-center justify-center gap-2.5 shadow-md hover:shadow-lg transition-all active:scale-[0.99]">
+                            <i data-lucide="sparkles" class="w-4 h-4"></i>
+                            <span>Generate Exam with AI</span>
+                            <span class="text-[10px] font-normal bg-indigo-500/60 text-indigo-100 px-2 py-0.5 rounded-full ml-1">Takes ~15s</span>
+                        </button>
+                    </div>
+
+                    <!-- Animated Progress Bar Container (Hidden by default) -->
+                    <div id="generation-progress-box" class="hidden space-y-2 pt-2">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="font-semibold text-indigo-700 flex items-center gap-1.5" id="generation-stage-text">
+                                <i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin text-indigo-600"></i>
+                                <span>Synthesizing questions...</span>
+                            </span>
+                            <span class="font-bold text-slate-600" id="generation-pct-text">30%</span>
+                        </div>
+                        <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div id="generation-progress-bar" class="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 transition-all duration-300" style="width: 30%"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
 
-        <!-- ================= VIEW 3: QUESTION BANK & EDITOR ================= -->
-        <section id="view-editor" class="app-view hidden">
-            <div class="view-header">
+        <!-- ================= VIEW 3: QUESTION BANK & LIVE EDITOR ================= -->
+        <section id="view-editor" class="app-view hidden space-y-6">
+            <!-- Header Bar -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white border border-slate-200 p-5 rounded-2xl shadow-xs">
                 <div>
-                    <h1 class="view-title" id="editor-exam-title">Question Bank & Editor</h1>
-                    <p class="view-desc" id="editor-exam-meta">Review and customize questions before sharing or taking.</p>
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[11px] font-semibold border border-indigo-200/60" id="editor-exam-meta-badge">10 Questions</span>
+                        <span class="text-xs text-slate-500" id="editor-points-badge">12.0 Total Points</span>
+                    </div>
+                    <h1 class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight" id="editor-exam-title">Operating Systems Midterm</h1>
                 </div>
-                <div class="btn-group">
-                    <button class="btn btn-secondary" onclick="appState.openAddQuestionModal()">
-                        ➕ Add Question
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <button onclick="appState.openAddQuestionModal()" class="px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium text-xs flex items-center gap-1.5 shadow-xs transition-all">
+                        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                        <span>Add Question</span>
                     </button>
-                    <button class="btn btn-secondary" onclick="appState.navigateTo('export')">
-                        📥 Export Paper
+                    <button onclick="appState.navigateTo('export')" class="px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium text-xs flex items-center gap-1.5 shadow-xs transition-all">
+                        <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                        <span>Export Paper</span>
                     </button>
-                    <button class="btn btn-primary" onclick="appState.startExamWithCurrent()">
-                        🎯 Start Online Exam
+                    <button onclick="appState.startOnlineExam()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95">
+                        <i data-lucide="play" class="w-3.5 h-3.5"></i>
+                        <span>Start Online Exam</span>
                     </button>
                 </div>
             </div>
 
-            <!-- Question Cards Container -->
-            <div id="editor-questions-list" class="questions-list">
-                <div class="empty-state">
-                    <span class="empty-icon">📝</span>
-                    <p>No questions loaded. Select an exam from the dashboard or generate a new one.</p>
+            <!-- 2-Column Bento: Filter Sidebar (3 cols) + Questions List (9 cols) -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                
+                <!-- Left Filter Sidebar (3 cols) -->
+                <div class="lg:col-span-4 bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-5">
+                    <div>
+                        <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2">Filter By Question Type</h3>
+                        <div class="space-y-1 text-xs">
+                            <button onclick="appState.filterEditorByType('all')" class="editor-type-filter w-full text-left px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 font-semibold flex items-center justify-between">
+                                <span>All Questions</span>
+                                <span id="filter-count-all" class="text-[11px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">0</span>
+                            </button>
+                            <button onclick="appState.filterEditorByType('mcq')" class="editor-type-filter w-full text-left px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-50 flex items-center justify-between">
+                                <span>Multiple Choice</span>
+                                <span id="filter-count-mcq" class="text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">0</span>
+                            </button>
+                            <button onclick="appState.filterEditorByType('true_false')" class="editor-type-filter w-full text-left px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-50 flex items-center justify-between">
+                                <span>True / False</span>
+                                <span id="filter-count-tf" class="text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">0</span>
+                            </button>
+                            <button onclick="appState.filterEditorByType('short_answer')" class="editor-type-filter w-full text-left px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-50 flex items-center justify-between">
+                                <span>Short Answer</span>
+                                <span id="filter-count-short" class="text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">0</span>
+                            </button>
+                            <button onclick="appState.filterEditorByType('essay')" class="editor-type-filter w-full text-left px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-50 flex items-center justify-between">
+                                <span>Essay / Analytical</span>
+                                <span id="filter-count-essay" class="text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">0</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Exam Specifications Card -->
+                    <div class="pt-4 border-t border-slate-100 space-y-2 text-xs">
+                        <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2">Assessment Specs</h3>
+                        <div class="flex justify-between text-slate-600">
+                            <span>Difficulty:</span>
+                            <span class="font-semibold text-slate-900 capitalize" id="editor-spec-diff">Medium</span>
+                        </div>
+                        <div class="flex justify-between text-slate-600">
+                            <span>Time Limit:</span>
+                            <span class="font-semibold text-slate-900" id="editor-spec-time">30 mins</span>
+                        </div>
+                        <div class="flex justify-between text-slate-600">
+                            <span>Passing Score:</span>
+                            <span class="font-semibold text-slate-900" id="editor-spec-pass">75%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Main Column: Questions Cards (8 cols) -->
+                <div class="lg:col-span-8 space-y-4" id="editor-questions-list">
+                    <!-- Questions injected dynamically by appState.renderQuestions() -->
                 </div>
             </div>
         </section>
 
         <!-- ================= VIEW 4: STUDENT EXAM PLAYER ================= -->
-        <section id="view-player" class="app-view hidden">
-            <!-- Sticky Exam Top Header -->
-            <div class="exam-player-header">
-                <div class="player-header-left">
-                    <h2 id="player-exam-title">Assessment Test</h2>
-                    <div class="player-student-input">
-                        <span>Candidate:</span>
-                        <input type="text" id="player-student-name" value="Student" placeholder="Enter your name">
+        <section id="view-player" class="app-view hidden space-y-6">
+            <!-- Top Sticky Exam Status Bar -->
+            <div class="sticky top-16 z-40 bg-white border border-slate-200 p-4 rounded-2xl shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <img src="assets/icon.png" alt="StudyWise" class="w-9 h-9 rounded-xl object-contain bg-slate-50 border border-slate-200 p-0.5 flex-shrink-0"/>
+                    <div>
+                        <h2 class="text-base font-bold text-slate-900 truncate max-w-md" id="player-exam-title">Operating Systems Midterm</h2>
+                        <p class="text-xs text-slate-500" id="player-progress-text">Question 1 of 10 • 0% Complete</p>
                     </div>
                 </div>
-
-                <div class="player-header-right">
-                    <div id="player-timer-container" class="timer-box">
-                        <span class="timer-icon">⏱️</span>
-                        <span id="player-timer-text">00:00</span>
+                <div class="flex items-center gap-3">
+                    <!-- Real-time Countdown Timer Widget -->
+                    <div id="player-timer-box" class="flex items-center gap-2 bg-slate-100 border border-slate-200 px-3.5 py-1.5 rounded-xl text-slate-800 font-mono text-sm font-bold shadow-inner transition-colors">
+                        <i data-lucide="clock" class="w-4 h-4 text-slate-500"></i>
+                        <span id="player-timer-text">30:00</span>
                     </div>
-                    <button class="btn btn-success" onclick="appState.confirmSubmitExam()">
-                        Submit Exam ✔
+
+                    <!-- Submit Exam CTA -->
+                    <button onclick="appState.confirmSubmitExam()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-4 py-2 rounded-xl shadow-xs flex items-center gap-1.5 transition-all active:scale-95">
+                        <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>
+                        <span>Submit Exam</span>
                     </button>
                 </div>
             </div>
 
-            <!-- Exam Player Layout -->
-            <div class="exam-player-layout">
-                <!-- Question Palette Navigation Sidebar -->
-                <aside class="palette-sidebar">
-                    <div class="palette-header">
-                        <h3>Question Navigator</h3>
-                        <span id="palette-progress-text">0 of 0 Answered</span>
+            <!-- Player Bento Grid: Question Display (8 cols) + Navigator Palette (4 cols) -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                
+                <!-- Left: Active Question Area (8 cols) -->
+                <div class="lg:col-span-8 bg-white border border-slate-200 rounded-2xl p-6 sm:p-7 shadow-xs space-y-6">
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                        <div class="flex items-center gap-2">
+                            <span class="px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[11px] font-bold uppercase" id="player-q-type-badge">MULTIPLE CHOICE</span>
+                            <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[11px] font-semibold" id="player-q-pts-badge">1.0 pt</span>
+                        </div>
+                        <span class="text-xs text-slate-400 font-medium" id="player-q-index-badge">Question 1</span>
                     </div>
 
-                    <div class="palette-legend">
-                        <span class="legend-item"><span class="dot answered"></span> Answered</span>
-                        <span class="legend-item"><span class="dot current"></span> Current</span>
-                        <span class="legend-item"><span class="dot flagged"></span> Flagged</span>
-                        <span class="legend-item"><span class="dot unanswered"></span> Unanswered</span>
+                    <!-- Question Prompt Stem -->
+                    <div class="text-base sm:text-lg font-semibold text-slate-900 leading-snug" id="player-question-text">
+                        Loading question prompt...
                     </div>
 
-                    <div id="palette-grid" class="palette-grid"></div>
+                    <!-- Interactive Answer Options Container -->
+                    <div id="player-options-container" class="space-y-3">
+                        <!-- Injected dynamically -->
+                    </div>
 
-                    <div class="palette-footer">
-                        <button id="btn-flag-question" class="btn btn-outline-warning btn-block" onclick="appState.toggleFlagCurrentQuestion()">
-                            🚩 Flag for Review
+                    <!-- Bottom Nav Controls -->
+                    <div class="pt-4 border-t border-slate-100 flex items-center justify-between">
+                        <button id="btn-player-prev" onclick="appState.playerPrevQuestion()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs flex items-center gap-1.5 transition-all">
+                            <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
+                            <span>Previous</span>
+                        </button>
+                        <button id="btn-player-flag" onclick="appState.playerToggleFlag()" class="px-3.5 py-2 rounded-xl border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 font-medium text-xs flex items-center gap-1.5 transition-all">
+                            <i data-lucide="flag" class="w-3.5 h-3.5"></i>
+                            <span id="player-flag-label">Flag for Review</span>
+                        </button>
+                        <button id="btn-player-next" onclick="appState.playerNextQuestion()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs flex items-center gap-1.5 shadow-xs transition-all">
+                            <span>Next Question</span>
+                            <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
                         </button>
                     </div>
-                </aside>
+                </div>
 
-                <!-- Active Question Main Area -->
-                <div class="player-question-main">
-                    <div id="player-active-question-card" class="active-question-card">
-                        <!-- Rendered dynamically -->
+                <!-- Right: Question Palette Navigator (4 cols) -->
+                <div class="lg:col-span-4 bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                        <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Question Navigator</h3>
+                        <span class="text-[11px] font-semibold text-slate-500" id="player-palette-summary">0/0 Answered</span>
                     </div>
 
-                    <div class="player-nav-controls">
-                        <button id="btn-prev-question" class="btn btn-secondary" onclick="appState.prevQuestion()">
-                            ← Previous
-                        </button>
-                        <button id="btn-next-question" class="btn btn-primary" onclick="appState.nextQuestion()">
-                            Next →
-                        </button>
+                    <!-- Palette Grid -->
+                    <div id="player-palette-grid" class="grid grid-cols-5 gap-2">
+                        <!-- Circular numbered buttons injected dynamically -->
+                    </div>
+
+                    <!-- Legend States -->
+                    <div class="pt-3 border-t border-slate-100 space-y-2 text-[11px] text-slate-600">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+                            <span>Answered</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full border-2 border-indigo-600 bg-white"></span>
+                            <span>Current Question</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-amber-400"></span>
+                            <span>Flagged for Review</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full border border-slate-300 bg-slate-50"></span>
+                            <span>Unanswered</span>
+                        </div>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- ================= VIEW 5: RESULTS & AUTO-GRADING ================= -->
-        <section id="view-results" class="app-view hidden">
-            <div class="view-header">
+        <!-- ================= VIEW 5: AUTO-GRADED RESULTS ================= -->
+        <section id="view-results" class="app-view hidden space-y-8">
+            <!-- Header & Action Row -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 class="view-title">Assessment Results</h1>
-                    <p class="view-desc" id="results-meta-desc">Automated objective scoring & AI rubric evaluation.</p>
+                    <h1 class="text-2xl lg:text-3xl font-bold text-slate-900 tracking-tight">Assessment Results</h1>
+                    <p class="text-xs sm:text-sm text-slate-500 mt-1">Automated objective scoring & pedagogical AI rubric evaluation</p>
                 </div>
-                <div class="btn-group">
-                    <button class="btn btn-secondary" onclick="appState.retakeExam()">
-                        🔄 Retake Exam
+                <div class="flex items-center gap-2.5">
+                    <button onclick="appState.retakeExam()" class="px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium text-xs flex items-center gap-1.5 shadow-xs transition-all">
+                        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                        <span>Retake Exam</span>
                     </button>
-                    <button class="btn btn-secondary" onclick="appState.navigateTo('export')">
-                        📥 Export Results
+                    <button onclick="appState.navigateTo('export')" class="px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium text-xs flex items-center gap-1.5 shadow-xs transition-all">
+                        <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                        <span>Export Results</span>
                     </button>
-                    <button class="btn btn-primary" onclick="appState.navigateTo('dashboard')">
-                        Back to Dashboard
+                    <button onclick="appState.navigateTo('dashboard')" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs flex items-center gap-1.5 shadow-sm transition-all">
+                        <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i>
+                        <span>Back to Dashboard</span>
                     </button>
                 </div>
             </div>
 
-            <!-- Scorecard Summary Banner -->
-            <div class="results-scorecard">
-                <div class="score-radial-wrapper">
-                    <div class="score-circle" id="result-score-circle">
-                        <span id="result-score-percentage">0%</span>
+            <!-- Hero Scorecard Banner (Deep Indigo Gradient) -->
+            <div class="bg-gradient-to-r from-slate-950 via-indigo-950 to-indigo-900 rounded-3xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-8 relative z-10">
+                    
+                    <!-- Left: Radial Donut Score Gauge -->
+                    <div class="flex items-center gap-6">
+                        <div class="relative w-28 h-28 flex-shrink-0 flex items-center justify-center">
+                            <div id="result-score-circle" class="w-28 h-28 rounded-full flex items-center justify-center p-3.5 shadow-inner" style="background: conic-gradient(#10B981 85%, rgba(255,255,255,0.12) 85%);">
+                                <div class="w-full h-full rounded-full bg-slate-950 flex flex-col items-center justify-center">
+                                    <span class="text-2xl font-extrabold text-white" id="result-score-percentage">85%</span>
+                                    <span class="text-[9px] uppercase tracking-wider text-indigo-200 font-semibold">Score</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Center Performance Copy -->
+                        <div class="space-y-1.5">
+                            <span id="result-status-badge" class="px-3 py-1 rounded-full text-xs font-bold tracking-wider uppercase inline-flex items-center gap-1.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                PASSED
+                            </span>
+                            <h2 class="text-xl sm:text-2xl font-bold text-white tracking-tight" id="result-headline">Outstanding Performance!</h2>
+                            <p class="text-xs text-indigo-200" id="result-summary-text">You scored above the required passing threshold for this examination.</p>
+                        </div>
                     </div>
-                </div>
 
-                <div class="scorecard-details">
-                    <div id="result-status-badge" class="result-badge badge-pass">PASSED</div>
-                    <h2 id="result-headline">Outstanding Performance!</h2>
-                    <p id="result-summary-text">You scored above the passing threshold for this exam.</p>
-
-                    <div class="results-stat-bar">
-                        <div class="res-stat">
-                            <span class="stat-lbl">Points Earned:</span>
-                            <span id="result-points-earned" class="stat-val">0 / 0</span>
+                    <!-- Right Stats Summary Grid -->
+                    <div class="grid grid-cols-3 gap-4 border-t md:border-t-0 md:border-l border-white/10 pt-4 md:pt-0 md:pl-8 text-left">
+                        <div>
+                            <span class="text-[10px] uppercase tracking-wider text-indigo-300 block">Points Earned</span>
+                            <span class="text-base sm:text-lg font-bold text-white mt-0.5 block" id="result-points-earned">15.3 / 18.0</span>
                         </div>
-                        <div class="res-stat">
-                            <span class="stat-lbl">Time Taken:</span>
-                            <span id="result-time-taken" class="stat-val">00:00</span>
+                        <div>
+                            <span class="text-[10px] uppercase tracking-wider text-indigo-300 block">Time Taken</span>
+                            <span class="text-base sm:text-lg font-bold text-white mt-0.5 block" id="result-time-taken">21m 42s</span>
                         </div>
-                        <div class="res-stat">
-                            <span class="stat-lbl">Passing Score:</span>
-                            <span id="result-passing-score" class="stat-val">70%</span>
+                        <div>
+                            <span class="text-[10px] uppercase tracking-wider text-indigo-300 block">Passing Mark</span>
+                            <span class="text-base sm:text-lg font-bold text-white mt-0.5 block" id="result-passing-score">75%</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Question Breakdown Review List -->
-            <div class="content-panel">
-                <div class="panel-header">
-                    <h2>Detailed Question Review & Explanations</h2>
+            <!-- Detailed Question Review Section -->
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900 tracking-tight">Detailed Question Review & Pedagogical Feedback</h2>
+                        <p class="text-xs text-slate-500">Comprehensive breakdown of your responses, model answers, and AI evaluations</p>
+                    </div>
                 </div>
-                <div id="results-breakdown-list" class="results-list"></div>
+
+                <!-- Review Cards Injected Dynamically -->
+                <div class="space-y-4" id="results-breakdown-list">
+                    <!-- Cards injected by appState.renderResults() -->
+                </div>
             </div>
         </section>
 
-        <!-- ================= VIEW 6: EXPORT HUB ================= -->
-        <section id="view-export" class="app-view hidden">
-            <div class="view-header">
+        <!-- ================= VIEW 6: MULTI-FORMAT EXPORT HUB ================= -->
+        <section id="view-export" class="app-view hidden space-y-8">
+            <!-- Header Bar -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 class="view-title">Export & Sharing Hub</h1>
-                    <p class="view-desc" id="export-exam-title">Download ready-to-print papers, Word documents, LMS packages, and Google Forms files.</p>
+                    <h1 class="text-2xl lg:text-3xl font-bold text-slate-900 tracking-tight">Export & Sharing Hub</h1>
+                    <p class="text-xs sm:text-sm text-slate-500 mt-1" id="export-exam-title">Operating Systems Midterm Assessment (11 Questions • 18.0 pts)</p>
                 </div>
-                <button class="btn btn-secondary" onclick="appState.navigateTo('editor')">
-                    ← Back to Question Bank
+                <div>
+                    <button onclick="appState.navigateTo('editor')" class="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-medium inline-flex items-center gap-1.5 shadow-xs transition-all">
+                        <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
+                        <span>Back to Question Bank</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 7 Dedicated Export Format Cards (3-Column Grid) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                
+                <!-- Card 1: Student Exam Paper (PDF) -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                                <i data-lucide="file-text" class="w-5 h-5"></i>
+                            </div>
+                            <span class="px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-semibold text-[10px]">Print-Ready PDF</span>
+                        </div>
+                        <h3 class="text-base font-bold text-slate-900 mb-1">Student Exam Paper (PDF)</h3>
+                        <p class="text-xs text-slate-500 leading-relaxed mb-4">
+                            Clean, formal printable test paper with student header, bubble options, and ruled lines. No answers shown.
+                        </p>
+                    </div>
+                    <button onclick="appState.exportExam('pdf_student')" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-xs transition-all">
+                        <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+                        <span>View & Print PDF</span>
+                    </button>
+                </div>
+
+                <!-- Card 2: Teacher Solution Key (PDF) -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                                <i data-lucide="graduation-cap" class="w-5 h-5"></i>
+                            </div>
+                            <span class="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-semibold text-[10px]">Solution Key</span>
+                        </div>
+                        <h3 class="text-base font-bold text-slate-900 mb-1">Teacher Solution Key (PDF)</h3>
+                        <p class="text-xs text-slate-500 leading-relaxed mb-4">
+                            Complete test paper with correct answers highlighted in bold green, full justifications, and grading rubrics.
+                        </p>
+                    </div>
+                    <button onclick="appState.exportExam('pdf_teacher')" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-xs transition-all">
+                        <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
+                        <span>View & Print Key</span>
+                    </button>
+                </div>
+
+                <!-- Card 3: Microsoft Word (.docx) - Student -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                                <i data-lucide="file-code" class="w-5 h-5"></i>
+                            </div>
+                            <span class="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold text-[10px]">.DOCX Format</span>
+                        </div>
+                        <h3 class="text-base font-bold text-slate-900 mb-1">Microsoft Word (.docx)</h3>
+                        <p class="text-xs text-slate-500 leading-relaxed mb-4">
+                            Fully editable Microsoft Word document formatted for institutional printing and editing.
+                        </p>
+                    </div>
+                    <button onclick="appState.exportExam('docx_student')" class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-xs transition-all">
+                        <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                        <span>Download .docx</span>
+                    </button>
+                </div>
+
+                <!-- Card 4: Microsoft Word (.docx) - Solution Key -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                                <i data-lucide="file-check" class="w-5 h-5"></i>
+                            </div>
+                            <span class="px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 font-semibold text-[10px]">Editable Rubric</span>
+                        </div>
+                        <h3 class="text-base font-bold text-slate-900 mb-1">Word Solution Key (.docx)</h3>
+                        <p class="text-xs text-slate-500 leading-relaxed mb-4">
+                            Fully editable answer key, rubric guidelines, and pedagogical rationales for Word.
+                        </p>
+                    </div>
+                    <button onclick="appState.exportExam('docx_teacher')" class="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-xs transition-all">
+                        <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                        <span>Download Key (.docx)</span>
+                    </button>
+                </div>
+
+                <!-- Card 5: Google Forms Format (CSV) -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                                <i data-lucide="table" class="w-5 h-5"></i>
+                            </div>
+                            <span class="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 font-semibold text-[10px]">Quiz Import CSV</span>
+                        </div>
+                        <h3 class="text-base font-bold text-slate-900 mb-1">Google Forms Format (CSV)</h3>
+                        <p class="text-xs text-slate-500 leading-relaxed mb-4">
+                            Structured CSV spreadsheet formatted for instant Google Forms Quiz auto-import.
+                        </p>
+                    </div>
+                    <button onclick="appState.exportExam('csv')" class="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-xs transition-all">
+                        <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                        <span>Download Forms CSV</span>
+                    </button>
+                </div>
+
+                <!-- Card 6: Moodle LMS Package (GIFT) -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center">
+                                <i data-lucide="school" class="w-5 h-5"></i>
+                            </div>
+                            <span class="px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-700 font-semibold text-[10px]">LMS Standard</span>
+                        </div>
+                        <h3 class="text-base font-bold text-slate-900 mb-1">Moodle LMS Package (GIFT)</h3>
+                        <p class="text-xs text-slate-500 leading-relaxed mb-4">
+                            Standards-compliant GIFT syntax file importable directly into Moodle, Canvas, or Blackboard banks.
+                        </p>
+                    </div>
+                    <button onclick="appState.exportExam('gift')" class="w-full py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-xs transition-all">
+                        <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                        <span>Download GIFT File</span>
+                    </button>
+                </div>
+
+                <!-- Card 7: Portable JSON Exam Data -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center">
+                                <i data-lucide="database" class="w-5 h-5"></i>
+                            </div>
+                            <span class="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold text-[10px]">Raw API JSON</span>
+                        </div>
+                        <h3 class="text-base font-bold text-slate-900 mb-1">Portable JSON Exam Data</h3>
+                        <p class="text-xs text-slate-500 leading-relaxed mb-4">
+                            Full structured JSON payload of questions, answers, points, and source page citations.
+                        </p>
+                    </div>
+                    <button onclick="appState.exportExam('json')" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-xs transition-all">
+                        <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                        <span>Download JSON</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Bottom Live Sharing Section -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-7 shadow-xs space-y-4">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                        <i data-lucide="share-2" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-900">Live Online Exam Distribution</h3>
+                        <p class="text-xs text-slate-500">Provide enrolled students with direct link access to the examination player</p>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-3 pt-2">
+                    <div class="relative flex-1">
+                        <input id="share-exam-url" type="text" readonly class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-mono focus:outline-none" value="http://127.0.0.1:5000/#player"/>
+                    </div>
+                    <button onclick="appState.copyShareLink()" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all active:scale-95">
+                        <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                        <span id="copy-link-text">Copy Link</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ==================== MODALS ==================== -->
+
+    <!-- Modal 1: Settings & AI Providers -->
+    <div id="modal-settings" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+        <div class="bg-white rounded-2xl border border-slate-200 max-w-lg w-full p-6 shadow-xl space-y-5">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                        <i data-lucide="settings" class="w-4 h-4"></i>
+                    </div>
+                    <h2 class="text-base font-bold text-slate-900">AI Engine Settings</h2>
+                </div>
+                <button onclick="appState.closeSettings()" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
                 </button>
             </div>
 
-            <!-- Export Cards Grid -->
-            <div class="export-cards-grid">
-                <!-- Card 1: Student PDF / Print -->
-                <div class="export-card">
-                    <div class="export-icon bg-indigo">📄</div>
-                    <div class="export-info">
-                        <h3>Student Exam Paper (PDF / Print)</h3>
-                        <p>Clean, formal printable test paper with student header, bubble options, and ruled lines. No answers shown.</p>
-                    </div>
-                    <button class="btn btn-outline-primary" onclick="appState.triggerExport('html', 'student')">
-                        🖨️ View & Print PDF
-                    </button>
-                </div>
-
-                <!-- Card 2: Teacher Solution Key -->
-                <div class="export-card">
-                    <div class="export-icon bg-emerald">🎓</div>
-                    <div class="export-info">
-                        <h3>Teacher Solution Key (PDF / Print)</h3>
-                        <p>Complete test paper with correct answers highlighted, full explanations, source citations, and rubrics.</p>
-                    </div>
-                    <button class="btn btn-outline-success" onclick="appState.triggerExport('html', 'teacher')">
-                        🖨️ View & Print Key
-                    </button>
-                </div>
-
-                <!-- Card 3: Word Document (Student) -->
-                <div class="export-card">
-                    <div class="export-icon bg-blue">📝</div>
-                    <div class="export-info">
-                        <h3>Microsoft Word (.docx) - Student</h3>
-                        <p>Editable Microsoft Word document formatted for classroom printing and custom school letterheads.</p>
-                    </div>
-                    <button class="btn btn-outline-primary" onclick="appState.triggerExport('docx', 'student')">
-                        📥 Download .docx
-                    </button>
-                </div>
-
-                <!-- Card 4: Word Document (Teacher) -->
-                <div class="export-card">
-                    <div class="export-icon bg-purple">📘</div>
-                    <div class="export-info">
-                        <h3>Microsoft Word (.docx) - Solution Key</h3>
-                        <p>Fully editable solution sheet and grading rubrics for Microsoft Word.</p>
-                    </div>
-                    <button class="btn btn-outline-primary" onclick="appState.triggerExport('docx', 'teacher')">
-                        📥 Download Key (.docx)
-                    </button>
-                </div>
-
-                <!-- Card 5: Google Forms Import -->
-                <div class="export-card">
-                    <div class="export-icon bg-amber">📋</div>
-                    <div class="export-info">
-                        <h3>Google Forms Format (CSV)</h3>
-                        <p>Structured CSV file formatted for Google Forms Quiz import scripts and Google Classroom.</p>
-                    </div>
-                    <button class="btn btn-outline-warning" onclick="appState.triggerExport('google-forms')">
-                        📥 Download Forms CSV
-                    </button>
-                </div>
-
-                <!-- Card 6: Moodle LMS (GIFT) -->
-                <div class="export-card">
-                    <div class="export-icon bg-teal">🏫</div>
-                    <div class="export-info">
-                        <h3>Moodle LMS Package (GIFT Format)</h3>
-                        <p>Standard GIFT file importable directly into Moodle Question Banks and LMS assessment engines.</p>
-                    </div>
-                    <button class="btn btn-outline-secondary" onclick="appState.triggerExport('gift')">
-                        📥 Download GIFT File
-                    </button>
-                </div>
-
-                <!-- Card 7: Portable JSON Backup -->
-                <div class="export-card">
-                    <div class="export-icon bg-slate">💾</div>
-                    <div class="export-info">
-                        <h3>Portable JSON Exam Data</h3>
-                        <p>Full structured JSON data of all questions, options, and metadata for developers and backups.</p>
-                    </div>
-                    <button class="btn btn-outline-secondary" onclick="appState.triggerExport('json')">
-                        📥 Download JSON
-                    </button>
-                </div>
-            </div>
-        </section>
-
-    </main>
-
-    <!-- ================= MODALS ================= -->
-
-    <!-- Settings Modal -->
-    <div id="modal-settings" class="modal-backdrop hidden">
-        <div class="modal-card">
-            <div class="modal-header">
-                <h2>⚙️ Settings & AI Configuration</h2>
-                <button class="btn-close" onclick="appState.closeSettings()">✕</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="settings-provider-select">Active AI Provider:</label>
-                    <select id="settings-provider-select" onchange="appState.handleProviderChange(this.value)">
-                        <option value="demo">Demo / Offline Generator (Zero Setup Required)</option>
-                        <option value="gemini">Google Gemini AI (Gemini 1.5 Flash / Pro)</option>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-800 mb-1" for="settings-provider-select">Active AI Engine</label>
+                    <select id="settings-provider-select" onchange="appState.handleProviderChange(this.value)" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500">
+                        <option value="demo">Demo Engine (Offline Rule-Based, Zero Setup)</option>
+                        <option value="gemini">Google Gemini AI (Gemini 1.5 Flash)</option>
                         <option value="openai">OpenAI (GPT-4o / GPT-4o-mini)</option>
                     </select>
-                    <span class="field-hint">The Demo Engine extracts real questions from your document without an API key!</span>
                 </div>
 
-                <div id="gemini-key-group" class="form-group hidden">
-                    <label for="settings-gemini-key">Google Gemini API Key:</label>
-                    <input type="password" id="settings-gemini-key" placeholder="AIzaSy...">
-                    <span class="field-hint">Get a free key from Google AI Studio. Stored securely in your browser.</span>
+                <div id="settings-gemini-box" class="space-y-1.5 hidden">
+                    <label class="block text-xs font-semibold text-slate-800" for="settings-gemini-key">Google Gemini API Key</label>
+                    <input id="settings-gemini-key" type="password" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500" placeholder="AIzaSy..."/>
                 </div>
 
-                <div id="openai-key-group" class="form-group hidden">
-                    <label for="settings-openai-key">OpenAI API Key:</label>
-                    <input type="password" id="settings-openai-key" placeholder="sk-...">
-                    <span class="field-hint">OpenAI platform API key. Stored securely in your browser.</span>
+                <div id="settings-openai-box" class="space-y-1.5 hidden">
+                    <label class="block text-xs font-semibold text-slate-800" for="settings-openai-key">OpenAI API Key</label>
+                    <input id="settings-openai-key" type="password" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500" placeholder="sk-..."/>
                 </div>
 
-                <div class="settings-test-area">
-                    <button class="btn btn-secondary" onclick="appState.testAIConnection()">
-                        🧪 Test Connection
+                <div class="pt-2 flex items-center justify-between">
+                    <button onclick="appState.testApiConnection()" class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs flex items-center gap-1.5 transition-all">
+                        <i data-lucide="activity" class="w-3.5 h-3.5"></i>
+                        <span>Test Connection</span>
                     </button>
-                    <span id="settings-test-status" class="test-status"></span>
+                    <span id="settings-test-status" class="text-xs font-semibold text-slate-500"></span>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="appState.closeSettings()">Cancel</button>
-                <button class="btn btn-primary" onclick="appState.saveSettings()">Save Preferences</button>
-            </div>
-        </div>
-    </div>
 
-    <!-- AI Regenerate Question Modal -->
-    <div id="modal-regenerate" class="modal-backdrop hidden">
-        <div class="modal-card">
-            <div class="modal-header">
-                <h2>🪄 AI Question Regenerator</h2>
-                <button class="btn-close" onclick="appState.closeRegenerateModal()">✕</button>
-            </div>
-            <div class="modal-body">
-                <p>Provide specific guidance to help the AI refine or replace this question:</p>
-                <div class="form-group">
-                    <label for="regen-instruction">Custom Instruction / Focus:</label>
-                    <textarea id="regen-instruction" rows="4" placeholder="e.g. 'Make this question more challenging', 'Focus on real-world practical code examples', 'Replace option B and C with closer distractors'"></textarea>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="appState.closeRegenerateModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="appState.confirmRegenerateQuestion()">Regenerate Question</button>
+            <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-2.5">
+                <button onclick="appState.closeSettings()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs">Cancel</button>
+                <button onclick="appState.saveSettings()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-xs">Save Settings</button>
             </div>
         </div>
     </div>
 
-    <!-- Add Custom Question Modal -->
-    <div id="modal-add-question" class="modal-backdrop hidden">
-        <div class="modal-card">
-            <div class="modal-header">
-                <h2>➕ Add Custom Question</h2>
-                <button class="btn-close" onclick="appState.closeAddQuestionModal()">✕</button>
+    <!-- Modal 2: AI Single Question Regenerator -->
+    <div id="modal-regenerate" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+        <div class="bg-white rounded-2xl border border-slate-200 max-w-lg w-full p-6 shadow-xl space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                        <i data-lucide="wand-2" class="w-4 h-4"></i>
+                    </div>
+                    <h2 class="text-base font-bold text-slate-900">AI Question Regenerator</h2>
+                </div>
+                <button onclick="appState.closeRegenerateModal()" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
             </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="new-q-type">Question Type:</label>
-                    <select id="new-q-type" onchange="appState.toggleNewQuestionFields(this.value)">
-                        <option value="mcq">Multiple Choice (MCQ)</option>
-                        <option value="true_false">True / False</option>
-                        <option value="short_answer">Short Answer</option>
-                        <option value="essay">Essay / Analytical</option>
-                    </select>
-                </div>
 
-                <div class="form-group">
-                    <label for="new-q-text">Question Prompt:</label>
-                    <textarea id="new-q-text" rows="3" placeholder="Enter question text here..."></textarea>
-                </div>
-
-                <!-- MCQ Options Block -->
-                <div id="new-q-mcq-block">
-                    <label>Answer Choices (Select radio button for the correct choice):</label>
-                    <div class="new-opt-row">
-                        <input type="radio" name="new-correct-opt" value="0" checked>
-                        <input type="text" id="new-opt-0" placeholder="Option A (Correct)" class="opt-input">
-                    </div>
-                    <div class="new-opt-row">
-                        <input type="radio" name="new-correct-opt" value="1">
-                        <input type="text" id="new-opt-1" placeholder="Option B" class="opt-input">
-                    </div>
-                    <div class="new-opt-row">
-                        <input type="radio" name="new-correct-opt" value="2">
-                        <input type="text" id="new-opt-2" placeholder="Option C" class="opt-input">
-                    </div>
-                    <div class="new-opt-row">
-                        <input type="radio" name="new-correct-opt" value="3">
-                        <input type="text" id="new-opt-3" placeholder="Option D" class="opt-input">
-                    </div>
-                </div>
-
-                <!-- True False Block -->
-                <div id="new-q-tf-block" class="hidden">
-                    <label>Correct Answer:</label>
-                    <div class="tf-select-row">
-                        <label><input type="radio" name="new-tf-val" value="True" checked> True</label>
-                        <label style="margin-left: 20px;"><input type="radio" name="new-tf-val" value="False"> False</label>
-                    </div>
-                </div>
-
-                <!-- Subjective Answer / Rubric Block -->
-                <div id="new-q-subjective-block" class="hidden">
-                    <div class="form-group">
-                        <label for="new-q-model-ans">Expected Model Answer / Rubric:</label>
-                        <textarea id="new-q-model-ans" rows="3" placeholder="Key points and evaluation criteria..."></textarea>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="new-q-points">Points (Marks):</label>
-                        <input type="number" id="new-q-points" value="1.0" min="0.5" max="50" step="0.5">
-                    </div>
-                    <div class="form-group">
-                        <label for="new-q-page">Source Page # (Optional):</label>
-                        <input type="number" id="new-q-page" value="1" min="1">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="new-q-justification">Explanation / Rationale:</label>
-                    <textarea id="new-q-justification" rows="2" placeholder="Why this answer is correct..."></textarea>
-                </div>
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-700 italic max-h-24 overflow-y-auto" id="regen-original-text">
+                Loading original prompt...
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="appState.closeAddQuestionModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="appState.saveNewQuestion()">Save Question</button>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-800 mb-1" for="regen-instruction-input">Custom Guidance / Modification Instruction</label>
+                <input id="regen-instruction-input" type="text" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500" placeholder="e.g., Make it harder, focus on real-world examples, or change option choices."/>
+            </div>
+
+            <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+                <button onclick="appState.closeRegenerateModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs">Cancel</button>
+                <button id="btn-confirm-regen" onclick="appState.confirmRegenerateQuestion()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs flex items-center gap-1.5 shadow-xs">
+                    <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                    <span>Regenerate Question</span>
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- Loading Overlay -->
-    <div id="loading-overlay" class="loading-overlay hidden">
-        <div class="loading-spinner"></div>
-        <p id="loading-message" class="loading-text">Generating exam questions with AI...</p>
-        <span class="loading-subtext">Analyzing document concepts and building answer keys</span>
+    <!-- Modal 3: Add Custom Question -->
+    <div id="modal-add-question" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+        <div class="bg-white rounded-2xl border border-slate-200 max-w-lg w-full p-6 shadow-xl space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                    </div>
+                    <h2 class="text-base font-bold text-slate-900">Add Custom Question</h2>
+                </div>
+                <button onclick="appState.closeAddQuestionModal()" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="space-y-3">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-800 mb-1" for="new-q-type">Question Type</label>
+                        <select id="new-q-type" onchange="appState.handleNewQuestionTypeChange(this.value)" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none">
+                            <option value="mcq">Multiple Choice (MCQ)</option>
+                            <option value="true_false">True / False</option>
+                            <option value="short_answer">Short Answer</option>
+                            <option value="essay">Essay / Analytical</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-800 mb-1" for="new-q-points">Points (Marks)</label>
+                        <input id="new-q-points" type="number" step="0.5" value="1.0" min="0.5" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none"/>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-800 mb-1" for="new-q-text">Question Stem</label>
+                    <textarea id="new-q-text" rows="3" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none" placeholder="Enter the complete question prompt here..."></textarea>
+                </div>
+
+                <!-- Dynamic MCQ Options inputs -->
+                <div id="new-q-mcq-box" class="space-y-2">
+                    <label class="block text-xs font-semibold text-slate-800">Options & Correct Answer</label>
+                    <div class="space-y-1.5">
+                        <div class="flex items-center gap-2">
+                            <input type="radio" name="new-q-correct" value="0" checked class="text-indigo-600"/>
+                            <input id="new-opt-0" type="text" placeholder="Option A" class="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg"/>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="radio" name="new-q-correct" value="1" class="text-indigo-600"/>
+                            <input id="new-opt-1" type="text" placeholder="Option B" class="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg"/>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="radio" name="new-q-correct" value="2" class="text-indigo-600"/>
+                            <input id="new-opt-2" type="text" placeholder="Option C" class="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg"/>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="radio" name="new-q-correct" value="3" class="text-indigo-600"/>
+                            <input id="new-opt-3" type="text" placeholder="Option D" class="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg"/>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-800 mb-1" for="new-q-explanation">Pedagogical Explanation / Rubric</label>
+                    <input id="new-q-explanation" type="text" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none" placeholder="Explain why the answer is correct or specify scoring criteria..."/>
+                </div>
+            </div>
+
+            <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-2.5">
+                <button onclick="appState.closeAddQuestionModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs">Cancel</button>
+                <button onclick="appState.confirmAddQuestion()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-xs">Save Question</button>
+            </div>
+        </div>
     </div>
 
-    <!-- Notification Toast -->
-    <div id="toast-container" class="toast-container"></div>
+    <!-- Modal 4: Confirm Submit Exam -->
+    <div id="modal-confirm-submit" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+        <div class="bg-white rounded-2xl border border-slate-200 max-w-md w-full p-6 shadow-xl space-y-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
+                    <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h2 class="text-base font-bold text-slate-900">Submit Assessment?</h2>
+                    <p class="text-xs text-slate-500">Confirm before finalizing your answers for AI auto-grading</p>
+                </div>
+            </div>
 
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2 text-xs">
+                <div class="flex justify-between text-slate-700">
+                    <span>Total Questions:</span>
+                    <strong id="confirm-total-q" class="text-slate-900">0</strong>
+                </div>
+                <div class="flex justify-between text-slate-700">
+                    <span>Questions Answered:</span>
+                    <strong id="confirm-answered-q" class="text-emerald-700">0</strong>
+                </div>
+                <div class="flex justify-between text-slate-700">
+                    <span>Unanswered Items:</span>
+                    <strong id="confirm-unanswered-q" class="text-rose-700">0</strong>
+                </div>
+                <div class="flex justify-between text-slate-700">
+                    <span>Flagged for Review:</span>
+                    <strong id="confirm-flagged-q" class="text-amber-700">0</strong>
+                </div>
+            </div>
+
+            <div id="confirm-unanswered-warning" class="hidden text-xs text-rose-700 bg-rose-50 border border-rose-200 p-2.5 rounded-lg font-medium">
+                You still have unanswered questions. Are you sure you want to proceed?
+            </div>
+
+            <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+                <button onclick="appState.closeConfirmSubmitModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs">Return to Exam</button>
+                <button onclick="appState.executeSubmitExam()" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs">Yes, Submit Now</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Application Script -->
     <script src="app.js"></script>
 </body>
 </html>

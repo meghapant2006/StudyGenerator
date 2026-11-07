@@ -72,10 +72,13 @@ def index():
 
 
 @app.route('/api/health', methods=['GET'])
+@app.route('/api/system/info', methods=['GET'])
 def health_check():
-    """Health check endpoint"""
+    """Health check & system info endpoint"""
     return jsonify({
         'status': 'ok',
+        'name': 'StudyWise AI Exam Generator API',
+        'version': '2.4.0',
         'message': 'StudyWise Exam Generator API is running',
         'timestamp': datetime.now().isoformat()
     })
@@ -83,18 +86,21 @@ def health_check():
 
 # Analytics Route
 @app.route('/api/analytics', methods=['GET'])
+@app.route('/api/analytics/summary', methods=['GET'])
 def get_analytics():
     """Get high level analytics and metrics for dashboard"""
     try:
         summary = db.get_analytics_summary()
         recent_exams = [e.to_dict() for e in db.get_all_exams()[:6]]
         recent_attempts = db.get_recent_attempts(limit=5)
-        return jsonify({
+        response_data = {
             'success': True,
             'summary': summary,
             'recent_exams': recent_exams,
-            'recent_attempts': recent_attempts
-        })
+            'recent_attempts': recent_attempts,
+            **summary
+        }
+        return jsonify(response_data)
     except Exception as e:
         logger.error(f"Failed to retrieve analytics: {e}")
         return jsonify({'error': str(e)}), 500
@@ -171,11 +177,12 @@ def upload_file():
 
 # Exam Generation
 @app.route('/api/generate-exam', methods=['POST'])
+@app.route('/api/generate', methods=['POST'])
 def generate_exam():
     """
     Generate exam from:
     1. Uploaded PDF (via pdf_id)
-    2. Direct text / notes (via raw_text)
+    2. Direct text / notes (via raw_text or text)
     3. Topic / prompt (via topic)
     """
     try:
@@ -189,7 +196,7 @@ def generate_exam():
         passing_score = float(data.get('passing_score', 70.0))
         
         # Question type breakdown
-        q_config = data.get('question_config')
+        q_config = data.get('question_config') or data.get('question_counts')
         if not q_config:
             num_q = int(data.get('num_questions', DEFAULT_NUM_QUESTIONS))
             q_config = {'mcq': num_q}
@@ -217,9 +224,9 @@ def generate_exam():
             content_for_ai = pdf_content_cache[pdf_doc.filename]
             
         elif source_type == 'text':
-            raw_text = data.get('raw_text', '').strip()
+            raw_text = (data.get('raw_text') or data.get('text') or '').strip()
             if not raw_text:
-                return jsonify({'error': 'raw_text is required for Text source'}), 400
+                return jsonify({'error': 'raw_text or text is required for Text source'}), 400
             content_for_ai = raw_text
             source_ref = "Pasted Study Notes"
             if not title:
@@ -229,7 +236,8 @@ def generate_exam():
             topic = data.get('topic', '').strip()
             if not topic:
                 return jsonify({'error': 'topic is required for Topic source'}), 400
-            content_for_ai = f"Curriculum Subject / Topic: {topic}. Generate comprehensive questions covering core principles, mechanisms, applications, and problem-solving scenarios for {topic}."
+            prompt_context = data.get('prompt', '').strip()
+            content_for_ai = f"Curriculum Subject / Topic: {topic}. {prompt_context} Generate comprehensive questions covering core principles, mechanisms, applications, and problem-solving scenarios for {topic}."
             source_ref = topic
             if not title:
                 title = f"Assessment: {topic}"
@@ -265,11 +273,13 @@ def generate_exam():
         
         exam_id = db.save_exam(exam)
         saved_exam = db.get_exam(exam_id)
+        exam_dict = saved_exam.to_dict()
         
         return jsonify({
             'success': True,
-            'exam': saved_exam.to_dict()
-        })
+            'exam': exam_dict,
+            **exam_dict
+        }), 201
         
     except Exception as e:
         logger.error(f"Exam generation failed: {str(e)}")
@@ -282,9 +292,10 @@ def get_all_exams():
     """Get all exams"""
     try:
         exams = db.get_all_exams()
+        exam_dicts = [exam.to_dict() for exam in exams]
         return jsonify({
             'success': True,
-            'exams': [exam.to_dict() for exam in exams]
+            'exams': exam_dicts
         })
     except Exception as e:
         logger.error(f"Failed to retrieve exams: {e}")
@@ -292,15 +303,18 @@ def get_all_exams():
 
 
 @app.route('/api/exam/<int:exam_id>', methods=['GET'])
+@app.route('/api/exams/<int:exam_id>', methods=['GET'])
 def get_exam(exam_id):
     """Get single exam by ID"""
     try:
         exam = db.get_exam(exam_id)
         if not exam:
             return jsonify({'error': 'Exam not found'}), 404
+        exam_dict = exam.to_dict()
         return jsonify({
             'success': True,
-            'exam': exam.to_dict()
+            'exam': exam_dict,
+            **exam_dict
         })
     except Exception as e:
         logger.error(f"Failed to get exam {exam_id}: {e}")
@@ -308,6 +322,7 @@ def get_exam(exam_id):
 
 
 @app.route('/api/exam/<int:exam_id>', methods=['PUT'])
+@app.route('/api/exams/<int:exam_id>', methods=['PUT'])
 def update_exam(exam_id):
     """Update exam metadata"""
     try:
@@ -315,9 +330,11 @@ def update_exam(exam_id):
         updated = db.update_exam(exam_id, data)
         if not updated:
             return jsonify({'error': 'Exam not found or no valid fields to update'}), 404
+        exam_dict = db.get_exam(exam_id).to_dict()
         return jsonify({
             'success': True,
-            'exam': db.get_exam(exam_id).to_dict()
+            'exam': exam_dict,
+            **exam_dict
         })
     except Exception as e:
         logger.error(f"Failed to update exam {exam_id}: {e}")
@@ -325,6 +342,7 @@ def update_exam(exam_id):
 
 
 @app.route('/api/exam/<int:exam_id>', methods=['DELETE'])
+@app.route('/api/exams/<int:exam_id>', methods=['DELETE'])
 def delete_exam(exam_id):
     """Delete exam and associated records"""
     try:
@@ -342,6 +360,7 @@ def delete_exam(exam_id):
 
 # Question Bank & Editor Routes
 @app.route('/api/exam/<int:exam_id>/questions', methods=['POST'])
+@app.route('/api/exams/<int:exam_id>/questions', methods=['POST'])
 def add_question_to_exam(exam_id):
     """Add new question manually to an exam"""
     try:
@@ -354,11 +373,13 @@ def add_question_to_exam(exam_id):
         question.exam_id = exam_id
         q_id = db.add_question(exam_id, question)
         new_q = db.get_question(q_id)
+        q_dict = new_q.to_dict()
         
         return jsonify({
             'success': True,
-            'question': new_q.to_dict()
-        })
+            'question': q_dict,
+            **q_dict
+        }), 201
     except Exception as e:
         logger.error(f"Failed to add question to exam {exam_id}: {e}")
         return jsonify({'error': str(e)}), 500
@@ -432,10 +453,12 @@ def regenerate_question(question_id):
         # Update question in database
         db.update_question(question_id, new_q.to_dict())
         updated_q = db.get_question(question_id)
+        q_dict = updated_q.to_dict()
         
         return jsonify({
             'success': True,
-            'question': updated_q.to_dict()
+            'question': q_dict,
+            **q_dict
         })
     except Exception as e:
         logger.error(f"Failed to regenerate question {question_id}: {e}")
@@ -444,7 +467,8 @@ def regenerate_question(question_id):
 
 # Exam Taking & Auto-Grading Routes
 @app.route('/api/submit-attempt', methods=['POST'])
-def submit_attempt():
+@app.route('/api/exams/<int:exam_id>/submit', methods=['POST'])
+def submit_attempt(exam_id=None):
     """
     Submit exam attempt:
     - Auto-grades objective questions (MCQ, True/False)
@@ -453,7 +477,8 @@ def submit_attempt():
     """
     try:
         data = request.get_json() or {}
-        exam_id = data.get('exam_id')
+        if not exam_id:
+            exam_id = data.get('exam_id')
         student_name = data.get('student_name', 'Student').strip() or 'Student'
         answers = data.get('answers', {})
         time_taken = int(data.get('time_taken', 0))
@@ -530,11 +555,11 @@ def get_exam_attempts(exam_id):
 def export_exam(exam_id, format_type):
     """
     Export exam in specified format:
-    - html?type=student|teacher
-    - docx?type=student|teacher
-    - gift (Moodle format)
-    - google-forms (CSV)
-    - json (Full portable JSON)
+    - pdf, solution-pdf, html (Print-ready HTML/PDF)
+    - docx, solution-docx (Word documents)
+    - gift (Moodle LMS GIFT format)
+    - csv, google-forms (Google Forms quiz import)
+    - json (Full structured JSON backup)
     """
     try:
         exam = db.get_exam(exam_id)
@@ -543,21 +568,38 @@ def export_exam(exam_id, format_type):
             
         export_mode = request.args.get('type', 'student').lower()
         safe_title = secure_filename(exam.title.replace(' ', '_')) or f"exam_{exam_id}"
+        format_lower = format_type.lower()
 
-        if format_type == 'html':
-            html_content = export_service.generate_html(exam, export_mode)
+        # HTML / PDF Printable views
+        if format_lower in ('pdf', 'html', 'print'):
+            export_type = "teacher" if export_mode == "teacher" else "student"
+            html_content = export_service.generate_html(exam, export_type)
             return Response(html_content, mimetype='text/html')
             
-        elif format_type == 'docx':
-            docx_bytes = export_service.generate_docx(exam, export_mode)
-            filename = f"{safe_title}_{export_mode}.docx"
+        elif format_lower in ('solution-pdf', 'solution-html', 'solution_pdf'):
+            html_content = export_service.generate_html(exam, "teacher")
+            return Response(html_content, mimetype='text/html')
+
+        elif format_lower == 'docx':
+            export_type = "teacher" if export_mode == "teacher" else "student"
+            docx_bytes = export_service.generate_docx(exam, export_type)
+            filename = f"{safe_title}_{export_type}.docx"
             return Response(
                 docx_bytes,
                 mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                 headers={'Content-Disposition': f'attachment; filename="{filename}"'}
             )
             
-        elif format_type == 'gift':
+        elif format_lower in ('solution-docx', 'solution_docx'):
+            docx_bytes = export_service.generate_docx(exam, "teacher")
+            filename = f"{safe_title}_solution_key.docx"
+            return Response(
+                docx_bytes,
+                mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+            )
+            
+        elif format_lower in ('gift', 'moodle'):
             gift_content = export_service.generate_gift(exam)
             filename = f"{safe_title}_moodle.gift.txt"
             return Response(
@@ -566,7 +608,7 @@ def export_exam(exam_id, format_type):
                 headers={'Content-Disposition': f'attachment; filename="{filename}"'}
             )
             
-        elif format_type == 'google-forms':
+        elif format_lower in ('csv', 'google-forms', 'google_forms'):
             csv_content = export_service.generate_google_forms_csv(exam)
             filename = f"{safe_title}_google_forms.csv"
             return Response(
@@ -575,7 +617,7 @@ def export_exam(exam_id, format_type):
                 headers={'Content-Disposition': f'attachment; filename="{filename}"'}
             )
             
-        elif format_type == 'json':
+        elif format_lower == 'json':
             json_str = json.dumps(exam.to_dict(), indent=2)
             filename = f"{safe_title}.json"
             return Response(

@@ -1,13 +1,8 @@
 /**
- * StudyWise AI Exam Generator - Frontend Application Logic
- * Single Page Application (SPA) supporting:
- * - Dynamic Dashboard with metrics & search
- * - Exam Creation Wizard (PDF with OCR, Topics, Pasted text)
- * - Interactive Question Bank & Live Editor (Edit, Delete, Add, AI Regenerate)
- * - Student Exam Player (Question palette, countdown timer, flagging)
- * - Auto-Grading & AI Subjective Evaluation
- * - Multi-Format Export Hub (Student & Teacher PDF, Word, Moodle GIFT, Google Forms CSV)
- * - AI Settings & Multi-Provider switcher (Gemini, OpenAI, Demo Engine)
+ * StudyWise AI - Academic Exam Generator & Assessment Platform
+ * High-Performance Single Page Application (SPA)
+ * Modeled after Stitch Academic Precision System
+ * Zero Emojis - Vector Lucide Icons
  */
 
 const API_BASE = 'http://127.0.0.1:5000/api';
@@ -19,6 +14,15 @@ class AppState {
         this.currentExam = null;
         this.currentAttempt = null;
         this.allExams = [];
+        this.sourceTab = 'pdf';
+
+        // Question distribution counts
+        this.questionCounts = {
+            mcq: 5,
+            tf: 2,
+            short: 2,
+            essay: 1
+        };
 
         // Exam Player State
         this.activeQuestionIndex = 0;
@@ -26,7 +30,11 @@ class AppState {
         this.flaggedQuestions = new Set();
         this.timerInterval = null;
         this.timerSecondsRemaining = 0;
+        this.totalExamSeconds = 0;
         this.examStartTime = null;
+
+        // Editor active filter
+        this.editorActiveFilter = 'all';
 
         // Active regeneration target
         this.regeneratingQuestionId = null;
@@ -40,7 +48,1259 @@ class AppState {
     init() {
         this.bindEvents();
         this.updateProviderBadge();
+        this.loadDashboardData();
         this.navigateTo('dashboard');
+    }
+
+    renderIcons() {
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
+    }
+
+    // -------------------------------------------------------------
+    // Event Listeners & Binding
+    // -------------------------------------------------------------
+    bindEvents() {
+        // Navigation clicks
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const view = btn.dataset.view;
+                if (view) this.navigateTo(view);
+            });
+        });
+
+        // Dropzone drag-and-drop
+        const dropzone = document.getElementById('pdf-dropzone');
+        if (dropzone) {
+            dropzone.addEventListener('click', () => {
+                document.getElementById('pdf-file-input').click();
+            });
+
+            ['dragenter', 'dragover'].forEach(event => {
+                dropzone.addEventListener(event, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropzone.classList.add('border-indigo-500', 'bg-indigo-50/40');
+                });
+            });
+
+            ['dragleave', 'drop'].forEach(event => {
+                dropzone.addEventListener(event, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropzone.classList.remove('border-indigo-500', 'bg-indigo-50/40');
+                });
+            });
+
+            dropzone.addEventListener('drop', (e) => {
+                const files = e.dataTransfer.files;
+                if (files && files.length > 0) {
+                    this.uploadFile(files[0]);
+                }
+            });
+        }
+    }
+
+    // -------------------------------------------------------------
+    // Navigation & View Routing
+    // -------------------------------------------------------------
+    navigateTo(viewName) {
+        // Stop timer if moving away from exam player
+        if (this.currentView === 'player' && viewName !== 'player') {
+            this.stopTimer();
+        }
+
+        this.currentView = viewName;
+
+        // Hide all views
+        document.querySelectorAll('.app-view').forEach(view => {
+            view.classList.add('hidden');
+        });
+
+        // Show target view
+        const targetView = document.getElementById(`view-${viewName}`);
+        if (targetView) {
+            targetView.classList.remove('hidden');
+        }
+
+        // Update nav button states
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            if (btn.dataset.view === viewName) {
+                btn.className = 'nav-btn flex items-center gap-1.5 font-semibold bg-white text-indigo-600 rounded-full px-4 py-1.5 text-xs tracking-wide shadow-xs transition-all';
+            } else {
+                btn.className = 'nav-btn flex items-center gap-1.5 font-medium text-slate-600 rounded-full px-4 py-1.5 text-xs tracking-wide hover:text-slate-900 hover:bg-slate-200/60 transition-all';
+            }
+        });
+
+        // View-specific initializers
+        if (viewName === 'dashboard') {
+            this.loadDashboardData();
+        } else if (viewName === 'editor') {
+            this.renderQuestions();
+        } else if (viewName === 'player') {
+            this.initPlayer();
+        } else if (viewName === 'export') {
+            this.updateExportView();
+        }
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        setTimeout(() => this.renderIcons(), 50);
+    }
+
+    // -------------------------------------------------------------
+    // Dashboard Data & Analytics
+    // -------------------------------------------------------------
+    async loadDashboardData() {
+        try {
+            // Load analytics summary
+            const statsRes = await fetch(`${API_BASE}/analytics/summary`);
+            if (statsRes.ok) {
+                const stats = await statsRes.json();
+                document.getElementById('stat-total-exams').textContent = stats.total_exams || 0;
+                document.getElementById('stat-total-questions').textContent = stats.total_questions || 0;
+                document.getElementById('stat-total-attempts').textContent = stats.total_attempts || 0;
+                document.getElementById('stat-avg-score').textContent = `${Math.round(stats.average_score || 0)}%`;
+            }
+
+            // Load exams list
+            const examsRes = await fetch(`${API_BASE}/exams`);
+            if (examsRes.ok) {
+                const resData = await examsRes.json();
+                this.allExams = Array.isArray(resData) ? resData : (resData.exams || []);
+                this.renderDashboardExams(this.allExams);
+            }
+        } catch (error) {
+            console.error('Failed to load dashboard data:', error);
+        }
+    }
+
+    renderDashboardExams(exams) {
+        const tbody = document.getElementById('dashboard-exams-tbody');
+        const emptyState = document.getElementById('exams-empty-state');
+        const countBadge = document.getElementById('exam-count-badge');
+
+        if (!tbody) return;
+
+        countBadge.textContent = `${exams.length} assessment${exams.length === 1 ? '' : 's'}`;
+
+        if (exams.length === 0) {
+            tbody.innerHTML = '';
+            emptyState.classList.remove('hidden');
+            return;
+        }
+
+        emptyState.classList.add('hidden');
+
+        tbody.innerHTML = exams.map(exam => {
+            let diffBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 uppercase">MEDIUM</span>';
+            if (exam.difficulty === 'easy') {
+                diffBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase">EASY</span>';
+            } else if (exam.difficulty === 'hard') {
+                diffBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 uppercase">HARD</span>';
+            }
+
+            const timeLimitStr = exam.time_limit > 0 ? `${exam.time_limit} mins` : 'Untimed';
+            const createdStr = exam.created_date ? new Date(exam.created_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recent';
+
+            return `
+                <tr class="hover:bg-slate-50/80 transition-colors group">
+                    <td class="py-3.5 px-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-1.5 h-8 rounded-full bg-indigo-600"></div>
+                            <div>
+                                <div class="text-xs font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                                    ${this.escapeHtml(exam.title)}
+                                </div>
+                                <div class="text-[11px] text-slate-500 truncate max-w-xs">
+                                    ${this.escapeHtml(exam.description || exam.source_ref || 'Academic Examination')}
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="py-3.5 px-4">${diffBadge}</td>
+                    <td class="py-3.5 px-4 font-semibold text-slate-800">
+                        ${exam.num_questions || 0} Questions
+                    </td>
+                    <td class="py-3.5 px-4 text-slate-600">
+                        <div class="flex items-center gap-1.5">
+                            <i data-lucide="clock" class="w-3.5 h-3.5 text-slate-400"></i>
+                            <span>${timeLimitStr}</span>
+                        </div>
+                    </td>
+                    <td class="py-3.5 px-4 text-slate-500">${createdStr}</td>
+                    <td class="py-3.5 px-4 text-right">
+                        <div class="inline-flex items-center gap-1">
+                            <button onclick="appState.loadExamAndPlay(${exam.id})" class="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-700 rounded-lg text-xs font-semibold transition-all">
+                                Take
+                            </button>
+                            <button onclick="appState.loadExamAndEdit(${exam.id})" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition-all">
+                                Edit
+                            </button>
+                            <button onclick="appState.loadExamAndExport(${exam.id})" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition-all">
+                                Export
+                            </button>
+                            <button onclick="appState.deleteExam(${exam.id})" class="p-1 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-all" title="Delete Exam">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        this.renderIcons();
+    }
+
+    filterExams(query) {
+        if (!query || !query.trim()) {
+            this.renderDashboardExams(this.allExams);
+            return;
+        }
+        const q = query.toLowerCase();
+        const filtered = this.allExams.filter(exam => 
+            (exam.title && exam.title.toLowerCase().includes(q)) ||
+            (exam.description && exam.description.toLowerCase().includes(q)) ||
+            (exam.source_ref && exam.source_ref.toLowerCase().includes(q))
+        );
+        this.renderDashboardExams(filtered);
+    }
+
+    async deleteExam(examId) {
+        if (!confirm('Are you sure you want to delete this examination? This cannot be undone.')) return;
+
+        try {
+            const res = await fetch(`${API_BASE}/exams/${examId}`, { method: 'DELETE' });
+            if (res.ok) {
+                this.showToast('Exam deleted successfully', 'success');
+                this.loadDashboardData();
+            } else {
+                this.showToast('Failed to delete exam', 'error');
+            }
+        } catch (e) {
+            this.showToast('Network error while deleting exam', 'error');
+        }
+    }
+
+    // -------------------------------------------------------------
+    // Quick-Start & Wizard Source Selection
+    // -------------------------------------------------------------
+    startFromSource(sourceType) {
+        this.navigateTo('wizard');
+        this.switchWizardTab(sourceType);
+    }
+
+    switchWizardTab(tab) {
+        this.sourceTab = tab;
+
+        const tabs = ['pdf', 'topic', 'text'];
+        tabs.forEach(t => {
+            const btn = document.getElementById(`tab-btn-${t}`);
+            const panel = document.getElementById(`panel-source-${t}`);
+
+            if (t === tab) {
+                btn.className = 'wizard-tab py-2 px-3 rounded-lg bg-white text-indigo-600 font-semibold shadow-xs text-xs flex items-center justify-center gap-1.5 transition-all';
+                panel.classList.remove('hidden');
+            } else {
+                btn.className = 'wizard-tab py-2 px-3 rounded-lg text-slate-600 hover:text-slate-900 font-medium text-xs flex items-center justify-center gap-1.5 transition-all';
+                panel.classList.add('hidden');
+            }
+        });
+
+        this.renderIcons();
+    }
+
+    // -------------------------------------------------------------
+    // PDF Upload & Document Ingestion
+    // -------------------------------------------------------------
+    handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (file) this.uploadFile(file);
+    }
+
+    async uploadFile(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        this.showToast('Extracting text and structure with OCR...', 'info');
+
+        try {
+            const res = await fetch(`${API_BASE}/upload`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                this.currentPdf = data;
+
+                // Update UI elements
+                document.getElementById('pdf-dropzone').classList.add('hidden');
+                const card = document.getElementById('pdf-uploaded-card');
+                card.classList.remove('hidden');
+
+                document.getElementById('pdf-filename-display').textContent = data.filename;
+                document.getElementById('pdf-filesize-display').textContent = `${(file.size / (1024 * 1024)).toFixed(1)} MB • Processed with OCR`;
+                document.getElementById('pdf-pages-display').textContent = data.num_pages || 1;
+                document.getElementById('pdf-words-display').textContent = data.word_count || 0;
+                document.getElementById('pdf-excerpt-display').textContent = data.excerpt || 'Excerpt synthesized from pages.';
+
+                // Auto-fill exam title if blank
+                const titleInput = document.getElementById('exam-title-input');
+                if (!titleInput.value.trim()) {
+                    const cleanName = data.filename.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+                    titleInput.value = `Assessment: ${cleanName.charAt(0).toUpperCase() + cleanName.slice(1)}`;
+                }
+
+                this.showToast('Document ingested successfully!', 'success');
+                this.renderIcons();
+            } else {
+                const err = await res.json();
+                this.showToast(`Upload failed: ${err.error || 'Unknown error'}`, 'error');
+            }
+        } catch (error) {
+            this.showToast('Network error uploading file', 'error');
+        }
+    }
+
+    removeSelectedFile() {
+        this.currentPdf = null;
+        document.getElementById('pdf-uploaded-card').classList.add('hidden');
+        document.getElementById('pdf-dropzone').classList.remove('hidden');
+        document.getElementById('pdf-file-input').value = '';
+    }
+
+    updatePastedWordCount(text) {
+        const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+        document.getElementById('pasted-word-count').textContent = `${words} words`;
+    }
+
+    // -------------------------------------------------------------
+    // Question Distribution Steppers
+    // -------------------------------------------------------------
+    adjustQuestionCount(type, delta) {
+        const current = this.questionCounts[type] || 0;
+        const next = Math.max(0, Math.min(30, current + delta));
+        this.questionCounts[type] = next;
+
+        const countEl = document.getElementById(`count-${type}`);
+        if (countEl) countEl.textContent = next;
+
+        const total = Object.values(this.questionCounts).reduce((a, b) => a + b, 0);
+        document.getElementById('wizard-total-questions-badge').textContent = `Total: ${total} Items`;
+    }
+
+    // -------------------------------------------------------------
+    // Exam Generation Flow
+    // -------------------------------------------------------------
+    async generateExam() {
+        const title = document.getElementById('exam-title-input').value.trim() || 'Comprehensive Academic Assessment';
+        const difficulty = document.getElementById('exam-difficulty-select').value;
+        const targetAudience = document.getElementById('exam-target-audience').value;
+        const timeLimit = parseInt(document.getElementById('exam-time-limit').value, 10) || 0;
+        const passingScore = parseInt(document.getElementById('exam-passing-score').value, 10) || 75;
+
+        const totalQuestions = Object.values(this.questionCounts).reduce((a, b) => a + b, 0);
+        if (totalQuestions === 0) {
+            this.showToast('Please specify at least 1 question item', 'error');
+            return;
+        }
+
+        const payload = {
+            title,
+            difficulty,
+            target_audience: targetAudience,
+            time_limit: timeLimit,
+            passing_score: passingScore,
+            question_counts: {
+                mcq: this.questionCounts.mcq,
+                true_false: this.questionCounts.tf,
+                short_answer: this.questionCounts.short,
+                essay: this.questionCounts.essay
+            },
+            provider: this.settings.provider,
+            api_key: this.getActiveApiKey()
+        };
+
+        if (this.sourceTab === 'pdf') {
+            if (!this.currentPdf || !this.currentPdf.pdf_id) {
+                this.showToast('Please upload a PDF document first', 'error');
+                return;
+            }
+            payload.source_type = 'pdf';
+            payload.pdf_id = this.currentPdf.pdf_id;
+        } else if (this.sourceTab === 'topic') {
+            const subject = document.getElementById('topic-subject-input').value.trim();
+            const objectives = document.getElementById('topic-objectives-input').value.trim();
+            if (!subject) {
+                this.showToast('Please enter a subject topic', 'error');
+                return;
+            }
+            payload.source_type = 'topic';
+            payload.topic = subject;
+            payload.prompt = objectives ? `Focus areas & objectives: ${objectives}` : '';
+        } else if (this.sourceTab === 'text') {
+            const rawText = document.getElementById('pasted-text-input').value.trim();
+            if (!rawText) {
+                this.showToast('Please paste lecture notes or text content', 'error');
+                return;
+            }
+            payload.source_type = 'text';
+            payload.text = rawText;
+        }
+
+        // Show Progress Bar
+        const btn = document.getElementById('btn-generate-exam');
+        const progressBox = document.getElementById('generation-progress-box');
+        const progressBar = document.getElementById('generation-progress-bar');
+        const stageText = document.getElementById('generation-stage-text');
+        const pctText = document.getElementById('generation-pct-text');
+
+        btn.disabled = true;
+        btn.classList.add('opacity-60', 'cursor-not-allowed');
+        progressBox.classList.remove('hidden');
+
+        // Animated progress stages
+        let stageIdx = 0;
+        const stages = [
+            { pct: 20, text: 'Extracting corpus structure & cognitive concepts...' },
+            { pct: 45, text: 'Synthesizing question stems & distractor options...' },
+            { pct: 75, text: 'Generating scoring rubrics & pedagogical rationales...' },
+            { pct: 95, text: 'Finalizing assessment blueprint...' }
+        ];
+
+        const progressInterval = setInterval(() => {
+            if (stageIdx < stages.length) {
+                progressBar.style.width = `${stages[stageIdx].pct}%`;
+                pctText.textContent = `${stages[stageIdx].pct}%`;
+                stageText.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin text-indigo-600 inline-block mr-1"></i> ${stages[stageIdx].text}`;
+                this.renderIcons();
+                stageIdx++;
+            }
+        }, 1800);
+
+        try {
+            const res = await fetch(`${API_BASE}/generate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            clearInterval(progressInterval);
+
+            if (res.ok) {
+                const exam = await res.json();
+                this.currentExam = exam;
+
+                progressBar.style.width = '100%';
+                pctText.textContent = '100%';
+                stageText.innerHTML = '<span class="text-emerald-600 font-bold">Exam generation complete!</span>';
+
+                setTimeout(() => {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-60', 'cursor-not-allowed');
+                    progressBox.classList.add('hidden');
+                    this.showToast('Assessment generated successfully!', 'success');
+                    this.navigateTo('editor');
+                }, 800);
+            } else {
+                const err = await res.json();
+                clearInterval(progressInterval);
+                btn.disabled = false;
+                btn.classList.remove('opacity-60', 'cursor-not-allowed');
+                progressBox.classList.add('hidden');
+                this.showToast(`Generation failed: ${err.error || 'Unknown error'}`, 'error');
+            }
+        } catch (error) {
+            clearInterval(progressInterval);
+            btn.disabled = false;
+            btn.classList.remove('opacity-60', 'cursor-not-allowed');
+            progressBox.classList.add('hidden');
+            this.showToast('Network error during AI exam generation', 'error');
+        }
+    }
+
+    // -------------------------------------------------------------
+    // Question Bank & Live Editor Studio
+    // -------------------------------------------------------------
+    async loadExamAndEdit(examId) {
+        try {
+            const res = await fetch(`${API_BASE}/exams/${examId}`);
+            if (res.ok) {
+                this.currentExam = await res.json();
+                this.navigateTo('editor');
+            }
+        } catch (e) {
+            this.showToast('Error loading exam details', 'error');
+        }
+    }
+
+    renderQuestions() {
+        if (!this.currentExam) return;
+
+        const titleEl = document.getElementById('editor-exam-title');
+        const metaBadge = document.getElementById('editor-exam-meta-badge');
+        const ptsBadge = document.getElementById('editor-points-badge');
+        const list = document.getElementById('editor-questions-list');
+
+        titleEl.textContent = this.currentExam.title;
+        metaBadge.textContent = `${this.currentExam.questions.length} Items`;
+        ptsBadge.textContent = `${(this.currentExam.total_points || 0).toFixed(1)} Total Points`;
+
+        // Update specs
+        document.getElementById('editor-spec-diff').textContent = this.currentExam.difficulty || 'Medium';
+        document.getElementById('editor-spec-time').textContent = this.currentExam.time_limit > 0 ? `${this.currentExam.time_limit} mins` : 'Untimed';
+        document.getElementById('editor-spec-pass').textContent = `${this.currentExam.passing_score || 75}%`;
+
+        // Update counts
+        const questions = this.currentExam.questions;
+        document.getElementById('filter-count-all').textContent = questions.length;
+        document.getElementById('filter-count-mcq').textContent = questions.filter(q => q.question_type === 'mcq').length;
+        document.getElementById('filter-count-tf').textContent = questions.filter(q => q.question_type === 'true_false').length;
+        document.getElementById('filter-count-short').textContent = questions.filter(q => q.question_type === 'short_answer').length;
+        document.getElementById('filter-count-essay').textContent = questions.filter(q => q.question_type === 'essay').length;
+
+        // Filter questions
+        const filtered = this.editorActiveFilter === 'all'
+            ? questions
+            : questions.filter(q => q.question_type === this.editorActiveFilter);
+
+        if (filtered.length === 0) {
+            list.innerHTML = `
+                <div class="bg-white border border-slate-200 rounded-2xl p-8 text-center">
+                    <p class="text-xs text-slate-500">No questions match the selected filter.</p>
+                </div>
+            `;
+            return;
+        }
+
+        const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+
+        list.innerHTML = filtered.map((q, idx) => {
+            let optionsHtml = '';
+
+            if (q.question_type === 'mcq' || q.question_type === 'true_false') {
+                optionsHtml = `
+                    <div class="space-y-1.5 pt-2">
+                        ${q.answers.map((ans, optIdx) => {
+                            const isCorr = ans.is_correct;
+                            const letter = letters[optIdx] || (optIdx + 1);
+                            return `
+                                <div class="flex items-center gap-2.5 p-2 rounded-lg text-xs border ${isCorr ? 'border-emerald-200 bg-emerald-50/70 text-emerald-950 font-medium' : 'border-slate-200/80 bg-slate-50/50 text-slate-700'}">
+                                    <span class="w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] ${isCorr ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'}">
+                                        ${letter}
+                                    </span>
+                                    <span class="flex-1">${this.escapeHtml(ans.text)}</span>
+                                    ${isCorr ? '<span class="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">CORRECT</span>' : ''}
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            } else {
+                optionsHtml = `
+                    <div class="bg-indigo-50/40 border border-indigo-100 rounded-xl p-3 text-xs space-y-1 mt-2">
+                        <span class="font-bold text-indigo-900 block text-[11px] uppercase tracking-wider">Evaluation Rubric & Model Solution:</span>
+                        <p class="text-indigo-950 italic">${this.escapeHtml(q.correct_answer || q.rubric || 'Detailed answer evaluation criteria.')}</p>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs space-y-3 relative group">
+                    <div class="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-xs text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-2.5 py-0.5 rounded-full uppercase">
+                                Q${idx + 1} • ${q.question_type.replace('_', ' ')}
+                            </span>
+                            <span class="text-[11px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">
+                                ${q.points} pt${q.points === 1 ? '' : 's'}
+                            </span>
+                            ${q.source_page ? `<span class="text-[11px] text-slate-500">Page ${q.source_page}</span>` : ''}
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <button onclick="appState.openRegenerateModal(${q.id})" class="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold text-xs flex items-center gap-1 transition-all">
+                                <i data-lucide="wand-2" class="w-3 h-3"></i>
+                                <span>AI Regenerate</span>
+                            </button>
+                            <button onclick="appState.deleteQuestion(${q.id})" class="p-1 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-all" title="Delete Question">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Editable Question Stem -->
+                    <div class="text-sm font-semibold text-slate-900 leading-snug">
+                        ${this.escapeHtml(q.question_text)}
+                    </div>
+
+                    <!-- Answers / Rubric -->
+                    ${optionsHtml}
+
+                    <!-- Pedagogical Rationale Callout -->
+                    ${q.justification ? `
+                        <div class="bg-slate-50 border border-slate-200/70 rounded-xl p-3 text-xs text-slate-600 leading-relaxed flex items-start gap-2">
+                            <i data-lucide="info" class="w-3.5 h-3.5 text-indigo-600 flex-shrink-0 mt-0.5"></i>
+                            <div>
+                                <strong class="text-slate-800">Pedagogical Rationale:</strong>
+                                <span>${this.escapeHtml(q.justification)}</span>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }).join('');
+
+        this.renderIcons();
+    }
+
+    filterEditorByType(type) {
+        this.editorActiveFilter = type;
+        document.querySelectorAll('.editor-type-filter').forEach(btn => {
+            btn.className = 'editor-type-filter w-full text-left px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-50 flex items-center justify-between text-xs';
+        });
+        this.renderQuestions();
+    }
+
+    async deleteQuestion(qId) {
+        if (!confirm('Delete this question item?')) return;
+        try {
+            const res = await fetch(`${API_BASE}/questions/${qId}`, { method: 'DELETE' });
+            if (res.ok) {
+                this.currentExam.questions = this.currentExam.questions.filter(q => q.id !== qId);
+                this.renderQuestions();
+                this.showToast('Question deleted', 'success');
+            }
+        } catch (e) {
+            this.showToast('Error deleting question', 'error');
+        }
+    }
+
+    // -------------------------------------------------------------
+    // Single-Question AI Regeneration
+    // -------------------------------------------------------------
+    openRegenerateModal(questionId) {
+        this.regeneratingQuestionId = questionId;
+        const q = this.currentExam.questions.find(item => item.id === questionId);
+        if (q) {
+            document.getElementById('regen-original-text').textContent = q.question_text;
+        }
+        document.getElementById('regen-instruction-input').value = '';
+        document.getElementById('modal-regenerate').classList.remove('hidden');
+        this.renderIcons();
+    }
+
+    closeRegenerateModal() {
+        document.getElementById('modal-regenerate').classList.add('hidden');
+        this.regeneratingQuestionId = null;
+    }
+
+    async confirmRegenerateQuestion() {
+        if (!this.regeneratingQuestionId) return;
+
+        const instruction = document.getElementById('regen-instruction-input').value.trim();
+        const btn = document.getElementById('btn-confirm-regen');
+        btn.disabled = true;
+        btn.classList.add('opacity-60');
+
+        try {
+            const res = await fetch(`${API_BASE}/questions/${this.regeneratingQuestionId}/regenerate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    instruction,
+                    provider: this.settings.provider,
+                    api_key: this.getActiveApiKey()
+                })
+            });
+
+            if (res.ok) {
+                const updated = await res.json();
+                const idx = this.currentExam.questions.findIndex(q => q.id === this.regeneratingQuestionId);
+                if (idx !== -1) {
+                    this.currentExam.questions[idx] = updated;
+                }
+                this.closeRegenerateModal();
+                this.renderQuestions();
+                this.showToast('Question regenerated with AI!', 'success');
+            } else {
+                this.showToast('Regeneration failed', 'error');
+            }
+        } catch (e) {
+            this.showToast('Network error during question regeneration', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.classList.remove('opacity-60');
+        }
+    }
+
+    // -------------------------------------------------------------
+    // Add Custom Question Modal
+    // -------------------------------------------------------------
+    openAddQuestionModal() {
+        document.getElementById('modal-add-question').classList.remove('hidden');
+        this.renderIcons();
+    }
+
+    closeAddQuestionModal() {
+        document.getElementById('modal-add-question').classList.add('hidden');
+    }
+
+    handleNewQuestionTypeChange(type) {
+        const mcqBox = document.getElementById('new-q-mcq-box');
+        if (type === 'mcq') {
+            mcqBox.classList.remove('hidden');
+        } else {
+            mcqBox.classList.add('hidden');
+        }
+    }
+
+    async confirmAddQuestion() {
+        if (!this.currentExam) return;
+
+        const qType = document.getElementById('new-q-type').value;
+        const qPoints = parseFloat(document.getElementById('new-q-points').value) || 1.0;
+        const qText = document.getElementById('new-q-text').value.trim();
+        const qExplanation = document.getElementById('new-q-explanation').value.trim();
+
+        if (!qText) {
+            this.showToast('Please enter the question prompt', 'error');
+            return;
+        }
+
+        const payload = {
+            question_type: qType,
+            points: qPoints,
+            question_text: qText,
+            justification: qExplanation,
+            answers: []
+        };
+
+        if (qType === 'mcq') {
+            const correctOptIdx = parseInt(document.querySelector('input[name="new-q-correct"]:checked').value, 10);
+            for (let i = 0; i < 4; i++) {
+                const optText = document.getElementById(`new-opt-${i}`).value.trim() || `Option ${String.fromCharCode(65 + i)}`;
+                payload.answers.push({
+                    text: optText,
+                    is_correct: (i === correctOptIdx)
+                });
+            }
+        } else if (qType === 'true_false') {
+            payload.answers = [
+                { text: 'True', is_correct: true },
+                { text: 'False', is_correct: false }
+            ];
+        }
+
+        try {
+            const res = await fetch(`${API_BASE}/exams/${this.currentExam.id}/questions`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                const newQ = await res.json();
+                this.currentExam.questions.push(newQ);
+                this.closeAddQuestionModal();
+                this.renderQuestions();
+                this.showToast('Question added successfully', 'success');
+            } else {
+                this.showToast('Failed to add question', 'error');
+            }
+        } catch (e) {
+            this.showToast('Network error adding question', 'error');
+        }
+    }
+
+    // -------------------------------------------------------------
+    // Online Exam Player Logic
+    // -------------------------------------------------------------
+    async loadExamAndPlay(examId) {
+        try {
+            const res = await fetch(`${API_BASE}/exams/${examId}`);
+            if (res.ok) {
+                this.currentExam = await res.json();
+                this.navigateTo('player');
+            }
+        } catch (e) {
+            this.showToast('Error loading exam player', 'error');
+        }
+    }
+
+    startOnlineExam() {
+        if (!this.currentExam || this.currentExam.questions.length === 0) {
+            this.showToast('Exam has no questions', 'error');
+            return;
+        }
+        this.navigateTo('player');
+    }
+
+    initPlayer() {
+        if (!this.currentExam || !this.currentExam.questions) return;
+
+        this.activeQuestionIndex = 0;
+        this.userAnswers = {};
+        this.flaggedQuestions.clear();
+        this.examStartTime = new Date();
+
+        document.getElementById('player-exam-title').textContent = this.currentExam.title;
+
+        // Timer setup
+        this.stopTimer();
+        const timeLimitMins = this.currentExam.time_limit || 0;
+        if (timeLimitMins > 0) {
+            this.timerSecondsRemaining = timeLimitMins * 60;
+            this.totalExamSeconds = this.timerSecondsRemaining;
+            this.startTimer();
+        } else {
+            document.getElementById('player-timer-text').textContent = 'Untimed';
+            document.getElementById('player-timer-box').className = 'flex items-center gap-2 bg-slate-100 border border-slate-200 px-3.5 py-1.5 rounded-xl text-slate-800 font-mono text-sm font-bold shadow-inner';
+        }
+
+        this.renderPlayerQuestion();
+        this.renderPlayerPalette();
+    }
+
+    startTimer() {
+        this.updateTimerDisplay();
+        this.timerInterval = setInterval(() => {
+            this.timerSecondsRemaining--;
+            this.updateTimerDisplay();
+
+            if (this.timerSecondsRemaining <= 0) {
+                this.stopTimer();
+                this.showToast('Time limit reached! Submitting examination automatically.', 'info');
+                this.executeSubmitExam();
+            }
+        }, 1000);
+    }
+
+    stopTimer() {
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
+        }
+    }
+
+    updateTimerDisplay() {
+        const timerBox = document.getElementById('player-timer-box');
+        const timerText = document.getElementById('player-timer-text');
+        if (!timerBox || !timerText) return;
+
+        const m = Math.floor(this.timerSecondsRemaining / 60);
+        const s = this.timerSecondsRemaining % 60;
+        timerText.textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+
+        if (this.timerSecondsRemaining < 120) {
+            timerBox.className = 'flex items-center gap-2 px-3.5 py-1.5 rounded-xl font-mono text-sm font-bold shadow-inner timer-critical';
+        } else if (this.timerSecondsRemaining < 300) {
+            timerBox.className = 'flex items-center gap-2 px-3.5 py-1.5 rounded-xl font-mono text-sm font-bold shadow-inner timer-warning';
+        } else {
+            timerBox.className = 'flex items-center gap-2 bg-slate-100 border border-slate-200 px-3.5 py-1.5 rounded-xl text-slate-800 font-mono text-sm font-bold shadow-inner';
+        }
+    }
+
+    renderPlayerQuestion() {
+        const questions = this.currentExam.questions;
+        const q = questions[this.activeQuestionIndex];
+        if (!q) return;
+
+        // Progress Text
+        const pct = Math.round(((this.activeQuestionIndex + 1) / questions.length) * 100);
+        document.getElementById('player-progress-text').textContent = `Question ${this.activeQuestionIndex + 1} of ${questions.length} • ${pct}% Complete`;
+
+        // Badges
+        document.getElementById('player-q-type-badge').textContent = q.question_type.replace('_', ' ').toUpperCase();
+        document.getElementById('player-q-pts-badge').textContent = `${q.points} pt${q.points === 1 ? '' : 's'}`;
+        document.getElementById('player-q-index-badge').textContent = `Question ${this.activeQuestionIndex + 1}`;
+        document.getElementById('player-question-text').textContent = q.question_text;
+
+        // Render Options
+        const container = document.getElementById('player-options-container');
+        const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+        const savedAnswer = this.userAnswers[q.id];
+
+        if (q.question_type === 'mcq' || q.question_type === 'true_false') {
+            container.innerHTML = q.answers.map((ans, optIdx) => {
+                const isSelected = (savedAnswer === optIdx);
+                const letter = letters[optIdx] || (optIdx + 1);
+
+                return `
+                    <div onclick="appState.playerSelectOption(${q.id}, ${optIdx})" class="player-opt-card ${isSelected ? 'selected' : ''}">
+                        <div class="player-opt-indicator">
+                            <span class="player-opt-indicator-dot"></span>
+                        </div>
+                        <span class="font-bold text-xs text-slate-700">(${letter})</span>
+                        <span class="text-xs text-slate-800 flex-1 leading-relaxed">${this.escapeHtml(ans.text)}</span>
+                    </div>
+                `;
+            }).join('');
+        } else {
+            container.innerHTML = `
+                <div class="space-y-2">
+                    <label class="block text-xs font-semibold text-slate-700">Your Technical Response:</label>
+                    <textarea oninput="appState.playerSaveTextAnswer(${q.id}, this.value)" rows="6" class="w-full p-3 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="Type your full answer here...">${savedAnswer ? this.escapeHtml(savedAnswer) : ''}</textarea>
+                </div>
+            `;
+        }
+
+        // Prev / Next button state
+        document.getElementById('btn-player-prev').disabled = (this.activeQuestionIndex === 0);
+        document.getElementById('btn-player-prev').classList.toggle('opacity-50', this.activeQuestionIndex === 0);
+
+        const isLast = (this.activeQuestionIndex === questions.length - 1);
+        document.getElementById('btn-player-next').innerHTML = isLast 
+            ? '<span>Finish Review</span> <i data-lucide="check" class="w-3.5 h-3.5"></i>' 
+            : '<span>Next Question</span> <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>';
+
+        // Flag button
+        const isFlagged = this.flaggedQuestions.has(q.id);
+        const flagLabel = document.getElementById('player-flag-label');
+        flagLabel.textContent = isFlagged ? 'Flagged for Review' : 'Flag for Review';
+        document.getElementById('btn-player-flag').classList.toggle('bg-amber-100', isFlagged);
+
+        this.renderIcons();
+    }
+
+    playerSelectOption(questionId, optionIndex) {
+        this.userAnswers[questionId] = optionIndex;
+        this.renderPlayerQuestion();
+        this.renderPlayerPalette();
+    }
+
+    playerSaveTextAnswer(questionId, text) {
+        if (text.trim()) {
+            this.userAnswers[questionId] = text.trim();
+        } else {
+            delete this.userAnswers[questionId];
+        }
+        this.renderPlayerPalette();
+    }
+
+    playerPrevQuestion() {
+        if (this.activeQuestionIndex > 0) {
+            this.activeQuestionIndex--;
+            this.renderPlayerQuestion();
+            this.renderPlayerPalette();
+        }
+    }
+
+    playerNextQuestion() {
+        const questions = this.currentExam.questions;
+        if (this.activeQuestionIndex < questions.length - 1) {
+            this.activeQuestionIndex++;
+            this.renderPlayerQuestion();
+            this.renderPlayerPalette();
+        } else {
+            this.confirmSubmitExam();
+        }
+    }
+
+    playerToggleFlag() {
+        const q = this.currentExam.questions[this.activeQuestionIndex];
+        if (!q) return;
+
+        if (this.flaggedQuestions.has(q.id)) {
+            this.flaggedQuestions.delete(q.id);
+        } else {
+            this.flaggedQuestions.add(q.id);
+        }
+
+        this.renderPlayerQuestion();
+        this.renderPlayerPalette();
+    }
+
+    playerJumpTo(idx) {
+        this.activeQuestionIndex = idx;
+        this.renderPlayerQuestion();
+        this.renderPlayerPalette();
+    }
+
+    renderPlayerPalette() {
+        const grid = document.getElementById('player-palette-grid');
+        const summary = document.getElementById('player-palette-summary');
+        if (!grid) return;
+
+        const questions = this.currentExam.questions;
+        const answeredCount = Object.keys(this.userAnswers).length;
+        summary.textContent = `${answeredCount}/${questions.length} Answered`;
+
+        grid.innerHTML = questions.map((q, idx) => {
+            const isAnswered = (this.userAnswers[q.id] !== undefined);
+            const isCurrent = (idx === this.activeQuestionIndex);
+            const isFlagged = this.flaggedQuestions.has(q.id);
+
+            let classes = 'palette-btn';
+            if (isAnswered) classes += ' answered';
+            if (isCurrent) classes += ' current';
+            if (isFlagged) classes += ' flagged';
+
+            return `
+                <button onclick="appState.playerJumpTo(${idx})" class="${classes}" title="Question ${idx + 1}">
+                    ${idx + 1}
+                </button>
+            `;
+        }).join('');
+    }
+
+    // -------------------------------------------------------------
+    // Submit Exam & Auto-Grading Evaluation
+    // -------------------------------------------------------------
+    confirmSubmitExam() {
+        const questions = this.currentExam.questions;
+        const total = questions.length;
+        const answered = Object.keys(this.userAnswers).length;
+        const unanswered = total - answered;
+        const flagged = this.flaggedQuestions.size;
+
+        document.getElementById('confirm-total-q').textContent = total;
+        document.getElementById('confirm-answered-q').textContent = answered;
+        document.getElementById('confirm-unanswered-q').textContent = unanswered;
+        document.getElementById('confirm-flagged-q').textContent = flagged;
+
+        const warning = document.getElementById('confirm-unanswered-warning');
+        warning.classList.toggle('hidden', unanswered === 0);
+
+        document.getElementById('modal-confirm-submit').classList.remove('hidden');
+        this.renderIcons();
+    }
+
+    closeConfirmSubmitModal() {
+        document.getElementById('modal-confirm-submit').classList.add('hidden');
+    }
+
+    async executeSubmitExam() {
+        this.closeConfirmSubmitModal();
+        this.stopTimer();
+
+        const timeTaken = Math.round((new Date() - this.examStartTime) / 1000);
+        this.showToast('Evaluating submissions and AI grading rubrics...', 'info');
+
+        try {
+            const res = await fetch(`${API_BASE}/exams/${this.currentExam.id}/submit`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    answers: this.userAnswers,
+                    time_taken: timeTaken,
+                    provider: this.settings.provider,
+                    api_key: this.getActiveApiKey()
+                })
+            });
+
+            if (res.ok) {
+                const results = await res.json();
+                this.renderResults(results, timeTaken);
+                this.navigateTo('results');
+                this.showToast('Assessment evaluation complete!', 'success');
+            } else {
+                this.showToast('Evaluation submission failed', 'error');
+            }
+        } catch (e) {
+            this.showToast('Network error during evaluation submission', 'error');
+        }
+    }
+
+    // -------------------------------------------------------------
+    // Results Scorecard View
+    // -------------------------------------------------------------
+    renderResults(data, timeTaken) {
+        const score = data.score || 0;
+        const pointsEarned = data.points_earned || 0;
+        const totalPoints = data.total_points || this.currentExam.total_points || 0;
+        const passed = data.passed || false;
+        const passingScore = this.currentExam.passing_score || 75;
+
+        // Radial gauge circle
+        const circle = document.getElementById('result-score-circle');
+        const scorePct = document.getElementById('result-score-percentage');
+        scorePct.textContent = `${Math.round(score)}%`;
+        circle.style.background = `conic-gradient(${passed ? '#10B981' : '#F43F5E'} ${score}%, rgba(255,255,255,0.12) ${score}%)`;
+
+        // Headline & status badge
+        const badge = document.getElementById('result-status-badge');
+        const headline = document.getElementById('result-headline');
+        const summary = document.getElementById('result-summary-text');
+
+        if (passed) {
+            badge.textContent = 'PASSED';
+            badge.className = 'px-3 py-1 rounded-full text-xs font-bold tracking-wider uppercase inline-flex items-center gap-1.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+            headline.textContent = score >= 90 ? 'Outstanding Performance!' : 'Assessment Passed';
+            summary.textContent = `You exceeded the required passing threshold of ${passingScore}% for this examination.`;
+        } else {
+            badge.textContent = 'NEEDS IMPROVEMENT';
+            badge.className = 'px-3 py-1 rounded-full text-xs font-bold tracking-wider uppercase inline-flex items-center gap-1.5 bg-rose-500/20 text-rose-300 border border-rose-500/30';
+            headline.textContent = 'Keep Practicing!';
+            summary.textContent = `You scored below the passing mark of ${passingScore}%. Review the pedagogical feedback below.`;
+        }
+
+        // Metrics
+        document.getElementById('result-points-earned').textContent = `${pointsEarned.toFixed(1)} / ${totalPoints.toFixed(1)}`;
+        document.getElementById('result-time-taken').textContent = this.formatSeconds(timeTaken);
+        document.getElementById('result-passing-score').textContent = `${passingScore}%`;
+
+        // Review list
+        const list = document.getElementById('results-breakdown-list');
+        const questions = this.currentExam.questions;
+        const feedback = data.feedback || {};
+        const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+
+        list.innerHTML = questions.map((q, idx) => {
+            const userAns = this.userAnswers[q.id];
+            const qFeedback = feedback[String(q.id)] || feedback[q.id] || {};
+            const qScore = (qFeedback.score !== undefined) ? qFeedback.score : 0;
+
+            let cardClass = 'incorrect';
+            let statusText = 'Incorrect';
+            if (qScore >= q.points) {
+                cardClass = 'correct';
+                statusText = 'Full Credit';
+            } else if (qScore > 0) {
+                cardClass = 'partial';
+                statusText = 'Partial Credit';
+            }
+
+            let answerHtml = '';
+            if (q.question_type === 'mcq' || q.question_type === 'true_false') {
+                answerHtml = q.answers.map((ans, optIdx) => {
+                    const isSelected = (userAns === optIdx);
+                    const isCorrect = ans.is_correct;
+                    const letter = letters[optIdx] || (optIdx + 1);
+
+                    let optClass = 'review-opt';
+                    let marker = '';
+                    if (isCorrect) {
+                        optClass += ' is-correct-ans';
+                        marker = ' <strong class="text-emerald-700 ml-1">[CORRECT ANSWER]</strong>';
+                    } else if (isSelected && !isCorrect) {
+                        optClass += ' is-user-wrong';
+                        marker = ' <span class="text-rose-700 ml-1">[YOUR SELECTION]</span>';
+                    }
+
+                    return `<div class="${optClass}">(${letter}) ${this.escapeHtml(ans.text)} ${marker}</div>`;
+                }).join('');
+            } else {
+                answerHtml = `
+                    <div class="space-y-2 mt-2 text-xs">
+                        <div>
+                            <strong class="text-slate-800">Your Submitted Response:</strong>
+                            <div class="bg-slate-50 border border-slate-200 rounded-lg p-2.5 mt-1 text-slate-800">
+                                ${userAns ? this.escapeHtml(userAns) : '<em class="text-slate-400">No response provided</em>'}
+                            </div>
+                        </div>
+                        <div>
+                            <strong class="text-emerald-800">Expected Model Rubric:</strong>
+                            <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 mt-1 text-emerald-950 font-medium">
+                                ${this.escapeHtml(q.correct_answer || q.rubric || 'Refer to solution guidelines.')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="result-review-card ${cardClass}">
+                    <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+                        <span class="text-xs font-bold text-slate-900 uppercase">Question ${idx + 1} • ${q.question_type.replace('_', ' ')}</span>
+                        <span class="text-xs font-bold ${qScore >= q.points ? 'text-emerald-700' : (qScore > 0 ? 'text-amber-700' : 'text-rose-700')}">
+                            Score: ${qScore.toFixed(1)} / ${q.points} pts (${statusText})
+                        </span>
+                    </div>
+
+                    <div class="text-sm font-semibold text-slate-900 mb-2">
+                        ${this.escapeHtml(q.question_text)}
+                    </div>
+
+                    ${answerHtml}
+
+                    ${qFeedback.feedback ? `
+                        <div class="feedback-bubble">
+                            <strong>AI Evaluation:</strong> ${this.escapeHtml(qFeedback.feedback)}
+                        </div>
+                    ` : ''}
+
+                    ${q.justification ? `
+                        <div class="mt-3 bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-600">
+                            <strong>Pedagogical Rationale:</strong> ${this.escapeHtml(q.justification)}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }).join('');
+
+        this.renderIcons();
+    }
+
+    retakeExam() {
+        this.navigateTo('player');
+    }
+
+    // -------------------------------------------------------------
+    // Export Hub Logic
+    // -------------------------------------------------------------
+    async loadExamAndExport(examId) {
+        try {
+            const res = await fetch(`${API_BASE}/exams/${examId}`);
+            if (res.ok) {
+                this.currentExam = await res.json();
+                this.navigateTo('export');
+            }
+        } catch (e) {
+            this.showToast('Error loading exam for export', 'error');
+        }
+    }
+
+    updateExportView() {
+        const titleEl = document.getElementById('export-exam-title');
+        const shareUrlInput = document.getElementById('share-exam-url');
+
+        if (this.currentExam) {
+            titleEl.textContent = `${this.currentExam.title} (${this.currentExam.num_questions || this.currentExam.questions?.length || 0} Questions • ${(this.currentExam.total_points || 0).toFixed(1)} pts)`;
+            shareUrlInput.value = `${window.location.origin}/#player?exam=${this.currentExam.id}`;
+        } else {
+            titleEl.textContent = 'Please select an examination from the Dashboard or Question Bank.';
+            shareUrlInput.value = `${window.location.origin}/#player`;
+        }
+    }
+
+    exportExam(format) {
+        if (!this.currentExam) {
+            this.showToast('Please select an examination to export', 'error');
+            return;
+        }
+
+        const id = this.currentExam.id;
+
+        if (format === 'pdf_student') {
+            window.open(`${API_BASE}/export/${id}/pdf`, '_blank');
+        } else if (format === 'pdf_teacher') {
+            window.open(`${API_BASE}/export/${id}/solution-pdf`, '_blank');
+        } else if (format === 'docx_student') {
+            window.location.href = `${API_BASE}/export/${id}/docx`;
+        } else if (format === 'docx_teacher') {
+            window.location.href = `${API_BASE}/export/${id}/solution-docx`;
+        } else if (format === 'csv') {
+            window.location.href = `${API_BASE}/export/${id}/csv`;
+        } else if (format === 'gift') {
+            window.location.href = `${API_BASE}/export/${id}/gift`;
+        } else if (format === 'json') {
+            window.location.href = `${API_BASE}/export/${id}/json`;
+        }
+    }
+
+    copyShareLink() {
+        const input = document.getElementById('share-exam-url');
+        input.select();
+        navigator.clipboard.writeText(input.value);
+
+        const btnText = document.getElementById('copy-link-text');
+        btnText.textContent = 'Link Copied!';
+        setTimeout(() => {
+            btnText.textContent = 'Copy Link';
+        }, 2000);
+
+        this.showToast('Direct exam link copied to clipboard!', 'success');
     }
 
     // -------------------------------------------------------------
@@ -69,19 +1329,19 @@ class AppState {
         localStorage.setItem('studywise_settings', JSON.stringify(this.settings));
         this.updateProviderBadge();
         this.closeSettings();
-        this.showToast('Settings saved successfully!', 'success');
+        this.showToast('Engine settings saved successfully', 'success');
     }
 
     updateProviderBadge() {
-        const badgeLabel = document.getElementById('provider-label');
-        if (!badgeLabel) return;
+        const label = document.getElementById('provider-label');
+        if (!label) return;
 
         if (this.settings.provider === 'gemini') {
-            badgeLabel.textContent = 'Gemini AI';
+            label.textContent = 'Gemini AI';
         } else if (this.settings.provider === 'openai') {
-            badgeLabel.textContent = 'OpenAI';
+            label.textContent = 'OpenAI';
         } else {
-            badgeLabel.textContent = 'Demo Engine';
+            label.textContent = 'Demo Engine';
         }
     }
 
@@ -98,6 +1358,7 @@ class AppState {
         this.handleProviderChange(this.settings.provider);
         document.getElementById('settings-test-status').textContent = '';
         document.getElementById('modal-settings').classList.remove('hidden');
+        this.renderIcons();
     }
 
     closeSettings() {
@@ -105,1129 +1366,67 @@ class AppState {
     }
 
     handleProviderChange(provider) {
-        document.getElementById('gemini-key-group').classList.toggle('hidden', provider !== 'gemini');
-        document.getElementById('openai-key-group').classList.toggle('hidden', provider !== 'openai');
+        const geminiBox = document.getElementById('settings-gemini-box');
+        const openaiBox = document.getElementById('settings-openai-box');
+
+        geminiBox.classList.toggle('hidden', provider !== 'gemini');
+        openaiBox.classList.toggle('hidden', provider !== 'openai');
     }
 
-    async testAIConnection() {
+    async testApiConnection() {
         const statusEl = document.getElementById('settings-test-status');
-        const provider = document.getElementById('settings-provider-select').value;
-        const apiKey = (provider === 'gemini') 
-            ? document.getElementById('settings-gemini-key').value.trim()
-            : document.getElementById('settings-openai-key').value.trim();
-
         statusEl.textContent = 'Testing connection...';
-        statusEl.style.color = '#4F46E5';
+        statusEl.className = 'text-xs font-semibold text-indigo-600';
 
         try {
-            const res = await fetch(`${API_BASE}/settings`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ provider, api_key: apiKey })
-            });
-            const data = await res.json();
-            if (data.success) {
-                statusEl.textContent = '✔ ' + data.message;
-                statusEl.style.color = '#10B981';
+            const res = await fetch(`${API_BASE}/system/info`);
+            if (res.ok) {
+                const info = await res.json();
+                statusEl.textContent = `Backend operational (${info.version || 'v2.4'})`;
+                statusEl.className = 'text-xs font-semibold text-emerald-600';
             } else {
-                statusEl.textContent = '✖ ' + (data.error || 'Connection failed');
-                statusEl.style.color = '#EF4444';
+                statusEl.textContent = 'Backend unreachable';
+                statusEl.className = 'text-xs font-semibold text-rose-600';
             }
         } catch (e) {
-            statusEl.textContent = '✖ Unable to connect to server';
-            statusEl.style.color = '#EF4444';
+            statusEl.textContent = 'Connection failed';
+            statusEl.className = 'text-xs font-semibold text-rose-600';
         }
     }
 
     // -------------------------------------------------------------
-    // Navigation & Routing
+    // Utilities
     // -------------------------------------------------------------
-    navigateTo(viewId, params = {}) {
-        // Stop timer if leaving player view without submitting
-        if (this.currentView === 'player' && viewId !== 'player') {
-            this.stopTimer();
-        }
-
-        this.currentView = viewId;
-
-        // Toggle Views
-        const views = ['dashboard', 'wizard', 'editor', 'player', 'results', 'export'];
-        views.forEach(v => {
-            const el = document.getElementById(`view-${v}`);
-            if (el) el.classList.toggle('hidden', v !== viewId);
-        });
-
-        // Update nav links
-        document.querySelectorAll('.nav-link').forEach(link => {
-            link.classList.toggle('active', link.dataset.view === viewId);
-        });
-
-        // Initialize view data
-        if (viewId === 'dashboard') {
-            this.loadDashboard();
-        } else if (viewId === 'editor') {
-            if (this.currentExam) this.loadEditor(this.currentExam);
-        } else if (viewId === 'export') {
-            this.loadExportHub();
-        }
-
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    // -------------------------------------------------------------
-    // Dashboard Logic
-    // -------------------------------------------------------------
-    async loadDashboard() {
-        try {
-            const res = await fetch(`${API_BASE}/analytics`);
-            const data = await res.json();
-            if (data.success) {
-                const s = data.summary;
-                document.getElementById('stat-total-exams').textContent = s.total_exams || 0;
-                document.getElementById('stat-total-questions').textContent = s.total_questions || 0;
-                document.getElementById('stat-total-attempts').textContent = s.total_attempts || 0;
-                document.getElementById('stat-avg-score').textContent = `${s.avg_score || 0}%`;
-
-                this.allExams = data.recent_exams || [];
-                this.renderExamsTable(this.allExams);
-            }
-        } catch (e) {
-            console.error('Failed to load dashboard data:', e);
-        }
-    }
-
-    renderExamsTable(exams) {
-        const container = document.getElementById('exams-table-container');
-        if (!exams || exams.length === 0) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <span class="empty-icon">📂</span>
-                    <p>No exams created yet. Click "Create New Exam" to generate your first test!</p>
-                </div>
-            `;
-            return;
-        }
-
-        let rows = exams.map(exam => {
-            const diffClass = `badge-${exam.difficulty || 'medium'}`;
-            const dateStr = exam.created_date ? new Date(exam.created_date).toLocaleDateString() : 'Recent';
-            return `
-                <tr>
-                    <td>
-                        <div class="table-title">${this.escapeHtml(exam.title)}</div>
-                        <div style="font-size: 0.78rem; color: #64748B;">Source: ${this.escapeHtml(exam.source_ref || exam.source_type || 'Custom')}</div>
-                    </td>
-                    <td><span class="badge-tag ${diffClass}">${exam.difficulty || 'Medium'}</span></td>
-                    <td><strong>${exam.num_questions}</strong> Questions</td>
-                    <td>${exam.time_limit ? exam.time_limit + ' mins' : 'Untimed'}</td>
-                    <td>${dateStr}</td>
-                    <td>
-                        <div class="btn-group">
-                            <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.8rem;" onclick="appState.openExamFromDashboard(${exam.id}, 'player')">🎯 Take</button>
-                            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;" onclick="appState.openExamFromDashboard(${exam.id}, 'editor')">📝 Edit</button>
-                            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;" onclick="appState.openExamFromDashboard(${exam.id}, 'export')">📥 Export</button>
-                            <button class="btn btn-secondary" style="padding: 6px 10px; font-size: 0.8rem; color: #EF4444;" title="Delete" onclick="appState.deleteExam(${exam.id})">🗑️</button>
-                        </div>
-                    </td>
-                </tr>
-            `;
-        }).join('');
-
-        container.innerHTML = `
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Exam Title</th>
-                        <th>Difficulty</th>
-                        <th>Length</th>
-                        <th>Duration</th>
-                        <th>Created</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>${rows}</tbody>
-            </table>
-        `;
-    }
-
-    filterExams(query) {
-        if (!query.trim()) {
-            this.renderExamsTable(this.allExams);
-            return;
-        }
-        const q = query.toLowerCase();
-        const filtered = this.allExams.filter(e => 
-            (e.title && e.title.toLowerCase().includes(q)) ||
-            (e.source_ref && e.source_ref.toLowerCase().includes(q))
-        );
-        this.renderExamsTable(filtered);
-    }
-
-    async openExamFromDashboard(examId, targetView) {
-        try {
-            this.showLoading('Loading exam details...');
-            const res = await fetch(`${API_BASE}/exam/${examId}`);
-            const data = await res.json();
-            if (data.success) {
-                this.currentExam = data.exam;
-                if (targetView === 'player') {
-                    this.startExamWithCurrent();
-                } else {
-                    this.navigateTo(targetView);
-                }
-            } else {
-                this.showToast(data.error || 'Failed to load exam', 'error');
-            }
-        } catch (e) {
-            this.showToast('Network error while loading exam', 'error');
-        } finally {
-            this.hideLoading();
-        }
-    }
-
-    async deleteExam(examId) {
-        if (!confirm('Are you sure you want to delete this exam and all student attempt records?')) {
-            return;
-        }
-        try {
-            const res = await fetch(`${API_BASE}/exam/${examId}`, { method: 'DELETE' });
-            const data = await res.json();
-            if (data.success) {
-                this.showToast('Exam deleted successfully', 'success');
-                this.loadDashboard();
-            } else {
-                this.showToast(data.error || 'Failed to delete exam', 'error');
-            }
-        } catch (e) {
-            this.showToast('Failed to delete exam', 'error');
-        }
-    }
-
-    // -------------------------------------------------------------
-    // Exam Creation Wizard Logic
-    // -------------------------------------------------------------
-    startWizardWithSource(source) {
-        this.navigateTo('wizard');
-        this.switchSourceTab(source);
-    }
-
-    switchSourceTab(source) {
-        document.querySelectorAll('.tab-pill').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.source === source);
-        });
-
-        document.getElementById('pane-source-pdf').classList.toggle('hidden', source !== 'pdf');
-        document.getElementById('pane-source-topic').classList.toggle('hidden', source !== 'topic');
-        document.getElementById('pane-source-text').classList.toggle('hidden', source !== 'text');
-
-        if (source === 'topic') {
-            document.getElementById('input-topic').focus();
-        } else if (source === 'text') {
-            document.getElementById('input-raw-text').focus();
-        }
-    }
-
-    bindEvents() {
-        // Navigation links
-        document.querySelectorAll('.nav-link').forEach(link => {
-            link.addEventListener('click', () => {
-                this.navigateTo(link.dataset.view);
-            });
-        });
-
-        // Dropzone & File Input
-        const fileInput = document.getElementById('pdf-file-input');
-        const dropzone = document.getElementById('dropzone');
-
-        if (fileInput && dropzone) {
-            fileInput.addEventListener('change', (e) => {
-                if (e.target.files && e.target.files[0]) {
-                    this.uploadDocument(e.target.files[0]);
-                }
-            });
-
-            dropzone.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                dropzone.classList.add('drag-over');
-            });
-            dropzone.addEventListener('dragleave', () => {
-                dropzone.classList.remove('drag-over');
-            });
-            dropzone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                dropzone.classList.remove('drag-over');
-                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                    this.uploadDocument(e.dataTransfer.files[0]);
-                }
-            });
-        }
-    }
-
-    async uploadDocument(file) {
-        const formData = new FormData();
-        formData.append('file', file);
-
-        this.showLoading(`Extracting text & analyzing ${file.name}...`);
-        try {
-            const res = await fetch(`${API_BASE}/upload`, {
-                method: 'POST',
-                body: formData
-            });
-            const data = await res.json();
-            if (data.success) {
-                this.currentPdf = data.pdf;
-                const summaryEl = document.getElementById('pdf-upload-summary');
-                summaryEl.innerHTML = `
-                    <div style="font-weight: 700; color: #1E1B4B; margin-bottom: 4px;">📄 ${this.escapeHtml(data.pdf.original_name)}</div>
-                    <div>Pages: <strong>${data.summary.total_pages}</strong> &nbsp;•&nbsp; Words: <strong>${data.summary.total_words.toLocaleString()}</strong> &nbsp;•&nbsp; OCR Used: <strong>${data.summary.ocr_used ? 'Yes' : 'No'}</strong></div>
-                    <div style="font-style: italic; color: #4B5563; margin-top: 6px; font-size: 0.8rem;">"${this.escapeHtml(data.preview_text.slice(0, 160))}..."</div>
-                `;
-                summaryEl.classList.remove('hidden');
-
-                // Pre-fill exam title
-                const baseName = data.pdf.original_name.replace(/\.[^/.]+$/, "");
-                const titleInput = document.getElementById('exam-title-input');
-                if (!titleInput.value) {
-                    titleInput.value = `Assessment: ${baseName}`;
-                }
-                this.showToast('Document processed successfully!', 'success');
-            } else {
-                this.showToast(data.error || 'Upload failed', 'error');
-            }
-        } catch (e) {
-            this.showToast('Failed to upload document. Is the server running?', 'error');
-        } finally {
-            this.hideLoading();
-        }
-    }
-
-    async handleGenerateExam() {
-        const activeSourceBtn = document.querySelector('.tab-pill.active');
-        const sourceType = activeSourceBtn ? activeSourceBtn.dataset.source : 'pdf';
-
-        const title = document.getElementById('exam-title-input').value.trim();
-        const difficulty = document.getElementById('select-difficulty').value;
-        const targetAudience = document.getElementById('select-audience').value;
-        const timeLimit = parseInt(document.getElementById('input-time-limit').value) || 0;
-        const passingScore = parseFloat(document.getElementById('input-pass-score').value) || 70;
-
-        const countMcq = parseInt(document.getElementById('count-mcq').value) || 0;
-        const countTf = parseInt(document.getElementById('count-tf').value) || 0;
-        const countSa = parseInt(document.getElementById('count-sa').value) || 0;
-        const countEssay = parseInt(document.getElementById('count-essay').value) || 0;
-
-        const qConfig = {
-            mcq: countMcq,
-            true_false: countTf,
-            short_answer: countSa,
-            essay: countEssay
-        };
-
-        const totalQ = countMcq + countTf + countSa + countEssay;
-        if (totalQ <= 0) {
-            alert('Please specify at least 1 question to generate.');
-            return;
-        }
-
-        const payload = {
-            source_type: sourceType,
-            title: title,
-            difficulty: difficulty,
-            target_audience: targetAudience,
-            time_limit: timeLimit,
-            passing_score: passingScore,
-            question_config: qConfig,
-            provider: this.settings.provider,
-            api_key: this.getActiveApiKey()
-        };
-
-        if (sourceType === 'pdf') {
-            if (!this.currentPdf) {
-                alert('Please upload a PDF document first.');
-                return;
-            }
-            payload.pdf_id = this.currentPdf.id;
-        } else if (sourceType === 'topic') {
-            const topic = document.getElementById('input-topic').value.trim();
-            if (!topic) {
-                alert('Please enter a subject or curriculum topic.');
-                return;
-            }
-            payload.topic = topic;
-        } else if (sourceType === 'text') {
-            const text = document.getElementById('input-raw-text').value.trim();
-            if (!text) {
-                alert('Please paste some text notes or syllabus content.');
-                return;
-            }
-            payload.raw_text = text;
-        }
-
-        this.showLoading(`Formulating ${totalQ} questions using ${this.settings.provider.toUpperCase()}...`);
-
-        try {
-            const res = await fetch(`${API_BASE}/generate-exam`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const data = await res.json();
-            if (data.success) {
-                this.currentExam = data.exam;
-                this.showToast('Exam generated successfully!', 'success');
-                this.navigateTo('editor');
-            } else {
-                this.showToast(data.error || 'Exam generation failed', 'error');
-            }
-        } catch (e) {
-            this.showToast('Server error during exam generation', 'error');
-        } finally {
-            this.hideLoading();
-        }
-    }
-
-    // -------------------------------------------------------------
-    // Question Bank & Live Editor Logic
-    // -------------------------------------------------------------
-    loadEditor(exam) {
-        document.getElementById('editor-exam-title').textContent = exam.title;
-        document.getElementById('editor-exam-meta').textContent = 
-            `${exam.num_questions} Questions • ${exam.total_points || exam.num_questions} Total Points • ${exam.difficulty.toUpperCase()} • Level: ${exam.target_audience || 'General'}`;
-
-        const container = document.getElementById('editor-questions-list');
-        if (!exam.questions || exam.questions.length === 0) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <span class="empty-icon">📝</span>
-                    <p>No questions found in this exam. Click "Add Question" to create one.</p>
-                </div>
-            `;
-            return;
-        }
-
-        container.innerHTML = exam.questions.map((q, idx) => {
-            return this.renderEditorQuestionCard(q, idx + 1);
-        }).join('');
-    }
-
-    renderEditorQuestionCard(q, index) {
-        let optionsHtml = '';
-        if (q.question_type === 'mcq' || q.question_type === 'true_false') {
-            optionsHtml = `
-                <div class="editor-options-list">
-                    ${q.answers.map((ans, optIdx) => `
-                        <div class="editor-option-row ${ans.is_correct ? 'is-correct' : ''}">
-                            <input type="radio" name="opt-correct-${q.id}" value="${optIdx}" ${ans.is_correct ? 'checked' : ''} onchange="appState.handleEditorCorrectChange(${q.id}, ${optIdx})">
-                            <input type="text" class="editor-opt-input" value="${this.escapeHtml(ans.text)}" onchange="appState.handleEditorOptionTextChange(${q.id}, ${optIdx}, this.value)">
-                            ${ans.is_correct ? '<span style="font-size: 0.75rem; color: #059669; font-weight: 700;">✔ CORRECT</span>' : ''}
-                        </div>
-                    `).join('')}
-                </div>
-            `;
-        } else {
-            optionsHtml = `
-                <div style="margin: 12px 0;">
-                    <label style="font-size: 0.82rem; font-weight: 700; color: #475569;">Expected Model Response / Scoring Rubric:</label>
-                    <textarea class="form-group textarea" style="width: 100%; padding: 8px; font-size: 0.9rem;" rows="3" onchange="appState.handleEditorRubricChange(${q.id}, this.value)">${this.escapeHtml(q.correct_answer || q.rubric || '')}</textarea>
-                </div>
-            `;
-        }
-
-        return `
-            <div class="question-card" id="q-card-${q.id}">
-                <div class="card-top-bar">
-                    <div class="badge-row">
-                        <span class="badge-pill pill-type">Q${index} • ${q.question_type.replace('_', ' ').toUpperCase()}</span>
-                        <span class="badge-pill pill-points">${q.points} pt${q.points !== 1 ? 's' : ''}</span>
-                        ${q.source_page ? `<span class="badge-pill pill-source">📖 Page ${q.source_page}</span>` : ''}
-                    </div>
-                    <div style="font-size: 0.85rem; color: #64748B;">
-                        Points: <input type="number" min="0.5" max="50" step="0.5" value="${q.points}" style="width: 55px; padding: 2px 6px; font-weight: 700;" onchange="appState.handleEditorPointsChange(${q.id}, this.value)">
-                    </div>
-                </div>
-
-                <textarea class="question-edit-text" rows="2" onchange="appState.handleEditorTextChange(${q.id}, this.value)">${this.escapeHtml(q.question_text)}</textarea>
-
-                ${optionsHtml}
-
-                <div class="editor-justification-box">
-                    <strong>Pedagogical Explanation:</strong>
-                    <textarea style="width: 100%; border: none; background: transparent; font-size: 0.88rem; outline: none; margin-top: 4px; resize: vertical;" rows="2" onchange="appState.handleEditorJustificationChange(${q.id}, this.value)">${this.escapeHtml(q.justification || '')}</textarea>
-                </div>
-
-                <div class="editor-card-actions">
-                    <button class="btn btn-secondary" style="font-size: 0.82rem; padding: 6px 12px;" onclick="appState.openRegenerateModal(${q.id})">
-                        🪄 AI Regenerate
-                    </button>
-                    <button class="btn btn-danger" style="font-size: 0.82rem; padding: 6px 12px;" onclick="appState.deleteQuestion(${q.id})">
-                        🗑️ Delete
-                    </button>
-                </div>
-            </div>
-        `;
-    }
-
-    async handleEditorTextChange(qId, newText) {
-        await this.patchQuestion(qId, { question_text: newText });
-    }
-
-    async handleEditorPointsChange(qId, newPoints) {
-        await this.patchQuestion(qId, { points: parseFloat(newPoints) || 1.0 });
-    }
-
-    async handleEditorJustificationChange(qId, newJust) {
-        await this.patchQuestion(qId, { justification: newJust });
-    }
-
-    async handleEditorRubricChange(qId, newRubric) {
-        await this.patchQuestion(qId, { correct_answer: newRubric, rubric: newRubric });
-    }
-
-    async handleEditorOptionTextChange(qId, optIndex, newText) {
-        const q = this.currentExam.questions.find(x => x.id === qId);
-        if (!q || !q.answers[optIndex]) return;
-        q.answers[optIndex].text = newText;
-        await this.patchQuestion(qId, { answers: q.answers });
-    }
-
-    async handleEditorCorrectChange(qId, selectedIdx) {
-        const q = this.currentExam.questions.find(x => x.id === qId);
-        if (!q) return;
-        q.answers.forEach((ans, i) => {
-            ans.is_correct = (i === selectedIdx);
-        });
-        await this.patchQuestion(qId, { 
-            answers: q.answers,
-            correct_answer: q.answers[selectedIdx].text 
-        });
-        // Re-render editor card
-        const idx = this.currentExam.questions.findIndex(x => x.id === qId);
-        const cardEl = document.getElementById(`q-card-${qId}`);
-        if (cardEl) {
-            cardEl.outerHTML = this.renderEditorQuestionCard(q, idx + 1);
-        }
-    }
-
-    async patchQuestion(qId, data) {
-        try {
-            const res = await fetch(`${API_BASE}/questions/${qId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            const resData = await res.json();
-            if (resData.success) {
-                // Update local model
-                const qIdx = this.currentExam.questions.findIndex(x => x.id === qId);
-                if (qIdx !== -1) {
-                    this.currentExam.questions[qIdx] = resData.question;
-                }
-                this.showToast('Question updated', 'success');
-            }
-        } catch (e) {
-            console.error('Failed to update question:', e);
-        }
-    }
-
-    async deleteQuestion(qId) {
-        if (!confirm('Delete this question from the exam?')) return;
-        try {
-            const res = await fetch(`${API_BASE}/questions/${qId}`, { method: 'DELETE' });
-            const data = await res.json();
-            if (data.success) {
-                this.currentExam.questions = this.currentExam.questions.filter(x => x.id !== qId);
-                this.loadEditor(this.currentExam);
-                this.showToast('Question deleted', 'success');
-            }
-        } catch (e) {
-            this.showToast('Failed to delete question', 'error');
-        }
-    }
-
-    // Modal: AI Regenerate Question
-    openRegenerateModal(qId) {
-        this.regeneratingQuestionId = qId;
-        document.getElementById('regen-instruction').value = '';
-        document.getElementById('modal-regenerate').classList.remove('hidden');
-    }
-
-    closeRegenerateModal() {
-        this.regeneratingQuestionId = null;
-        document.getElementById('modal-regenerate').classList.add('hidden');
-    }
-
-    async confirmRegenerateQuestion() {
-        if (!this.regeneratingQuestionId) return;
-        const qId = this.regeneratingQuestionId;
-        const instruction = document.getElementById('regen-instruction').value.trim();
-        this.closeRegenerateModal();
-
-        this.showLoading('AI is regenerating question with your guidance...');
-        try {
-            const res = await fetch(`${API_BASE}/questions/${qId}/regenerate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    instruction: instruction,
-                    provider: this.settings.provider,
-                    api_key: this.getActiveApiKey()
-                })
-            });
-            const data = await res.json();
-            if (data.success) {
-                const qIdx = this.currentExam.questions.findIndex(x => x.id === qId);
-                if (qIdx !== -1) {
-                    this.currentExam.questions[qIdx] = data.question;
-                }
-                this.loadEditor(this.currentExam);
-                this.showToast('Question regenerated successfully!', 'success');
-            } else {
-                this.showToast(data.error || 'Failed to regenerate question', 'error');
-            }
-        } catch (e) {
-            this.showToast('Error during regeneration', 'error');
-        } finally {
-            this.hideLoading();
-        }
-    }
-
-    // Modal: Add Custom Question
-    openAddQuestionModal() {
-        document.getElementById('new-q-text').value = '';
-        document.getElementById('new-opt-0').value = '';
-        document.getElementById('new-opt-1').value = '';
-        document.getElementById('new-opt-2').value = '';
-        document.getElementById('new-opt-3').value = '';
-        document.getElementById('new-q-model-ans').value = '';
-        document.getElementById('new-q-justification').value = '';
-        this.toggleNewQuestionFields('mcq');
-        document.getElementById('modal-add-question').classList.remove('hidden');
-    }
-
-    closeAddQuestionModal() {
-        document.getElementById('modal-add-question').classList.add('hidden');
-    }
-
-    toggleNewQuestionFields(qType) {
-        document.getElementById('new-q-mcq-block').classList.toggle('hidden', qType !== 'mcq');
-        document.getElementById('new-q-tf-block').classList.toggle('hidden', qType !== 'true_false');
-        document.getElementById('new-q-subjective-block').classList.toggle('hidden', qType === 'mcq' || qType === 'true_false');
-    }
-
-    async saveNewQuestion() {
-        if (!this.currentExam) return;
-        const qType = document.getElementById('new-q-type').value;
-        const text = document.getElementById('new-q-text').value.trim();
-        const points = parseFloat(document.getElementById('new-q-points').value) || 1.0;
-        const page = parseInt(document.getElementById('new-q-page').value) || 1;
-        const justification = document.getElementById('new-q-justification').value.trim();
-
-        if (!text) {
-            alert('Please enter a question text.');
-            return;
-        }
-
-        let answers = [];
-        let correctAnswer = '';
-
-        if (qType === 'mcq') {
-            const corrRadio = document.querySelector('input[name="new-correct-opt"]:checked');
-            const corrIdx = corrRadio ? parseInt(corrRadio.value) : 0;
-            for (let i = 0; i < 4; i++) {
-                const optVal = document.getElementById(`new-opt-${i}`).value.trim() || `Option ${i+1}`;
-                const isCorr = (i === corrIdx);
-                answers.push({ text: optVal, is_correct: isCorr });
-                if (isCorr) correctAnswer = optVal;
-            }
-        } else if (qType === 'true_false') {
-            const corrRadio = document.querySelector('input[name="new-tf-val"]:checked');
-            const isTrue = corrRadio ? (corrRadio.value === 'True') : true;
-            answers = [
-                { text: 'True', is_correct: isTrue },
-                { text: 'False', is_correct: !isTrue }
-            ];
-            correctAnswer = isTrue ? 'True' : 'False';
-        } else {
-            correctAnswer = document.getElementById('new-q-model-ans').value.trim();
-        }
-
-        const payload = {
-            question_text: text,
-            question_type: qType,
-            answers: answers,
-            correct_answer: correctAnswer,
-            points: points,
-            justification: justification,
-            rubric: correctAnswer,
-            source_page: page,
-            source_section: 'Custom Question'
-        };
-
-        try {
-            const res = await fetch(`${API_BASE}/exam/${this.currentExam.id}/questions`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const data = await res.json();
-            if (data.success) {
-                this.currentExam.questions.push(data.question);
-                this.loadEditor(this.currentExam);
-                this.closeAddQuestionModal();
-                this.showToast('Question added to exam!', 'success');
-            } else {
-                this.showToast(data.error || 'Failed to add question', 'error');
-            }
-        } catch (e) {
-            this.showToast('Error saving question', 'error');
-        }
-    }
-
-    // -------------------------------------------------------------
-    // Student Exam Player Logic
-    // -------------------------------------------------------------
-    startExamWithCurrent() {
-        if (!this.currentExam || !this.currentExam.questions || this.currentExam.questions.length === 0) {
-            alert('Please generate or select an exam with questions first.');
-            return;
-        }
-
-        this.userAnswers = {};
-        this.flaggedQuestions.clear();
-        this.activeQuestionIndex = 0;
-        this.examStartTime = Date.now();
-
-        document.getElementById('player-exam-title').textContent = this.currentExam.title;
-
-        this.navigateTo('player');
-        this.renderQuestionPalette();
-        this.renderActiveQuestion();
-
-        // Start Timer
-        const timeLimitMins = this.currentExam.time_limit || 0;
-        this.startTimer(timeLimitMins);
-    }
-
-    startTimer(minutes) {
-        this.stopTimer();
-        const timerBox = document.getElementById('player-timer-container');
-        const timerText = document.getElementById('player-timer-text');
-
-        if (minutes <= 0) {
-            // Untimed: count upwards
-            let elapsed = 0;
-            timerBox.className = 'timer-box';
-            timerText.textContent = '00:00';
-            this.timerInterval = setInterval(() => {
-                elapsed++;
-                const m = Math.floor(elapsed / 60).toString().padStart(2, '0');
-                const s = (elapsed % 60).toString().padStart(2, '0');
-                timerText.textContent = `${m}:${s}`;
-            }, 1000);
-            return;
-        }
-
-        // Countdown mode
-        this.timerSecondsRemaining = minutes * 60;
-        this.timerInterval = setInterval(() => {
-            this.timerSecondsRemaining--;
-            if (this.timerSecondsRemaining <= 0) {
-                this.stopTimer();
-                alert('Time has expired! Submitting your exam now.');
-                this.submitExam();
-                return;
-            }
-
-            const m = Math.floor(this.timerSecondsRemaining / 60).toString().padStart(2, '0');
-            const s = (this.timerSecondsRemaining % 60).toString().padStart(2, '0');
-            timerText.textContent = `${m}:${s}`;
-
-            if (this.timerSecondsRemaining <= 120) {
-                timerBox.className = 'timer-box urgent';
-            } else if (this.timerSecondsRemaining <= 300) {
-                timerBox.className = 'timer-box warning';
-            } else {
-                timerBox.className = 'timer-box';
-            }
-        }, 1000);
-    }
-
-    stopTimer() {
-        if (this.timerInterval) {
-            clearInterval(this.timerInterval);
-            this.timerInterval = null;
-        }
-    }
-
-    renderQuestionPalette() {
-        const grid = document.getElementById('palette-grid');
-        const questions = this.currentExam.questions;
-
-        grid.innerHTML = questions.map((q, idx) => {
-            let stateClass = 'unanswered';
-            if (idx === this.activeQuestionIndex) {
-                stateClass = 'current';
-            } else if (this.flaggedQuestions.has(q.id)) {
-                stateClass = 'flagged';
-            } else if (this.userAnswers[q.id] !== undefined && String(this.userAnswers[q.id]).trim() !== '') {
-                stateClass = 'answered';
-            }
-
-            return `
-                <button class="palette-btn ${stateClass}" onclick="appState.goToQuestion(${idx})">
-                    ${idx + 1}
-                </button>
-            `;
-        }).join('');
-
-        // Progress text
-        const answeredCount = Object.keys(this.userAnswers).filter(k => String(this.userAnswers[k]).trim() !== '').length;
-        document.getElementById('palette-progress-text').textContent = `${answeredCount} of ${questions.length} Answered`;
-
-        // Update Flag button text
-        const currentQ = questions[this.activeQuestionIndex];
-        const flagBtn = document.getElementById('btn-flag-question');
-        if (currentQ && this.flaggedQuestions.has(currentQ.id)) {
-            flagBtn.textContent = '🚩 Remove Flag';
-        } else {
-            flagBtn.textContent = '🚩 Flag for Review';
-        }
-    }
-
-    renderActiveQuestion() {
-        const questions = this.currentExam.questions;
-        const q = questions[this.activeQuestionIndex];
-        const container = document.getElementById('player-active-question-card');
-        const prevBtn = document.getElementById('btn-prev-question');
-        const nextBtn = document.getElementById('btn-next-question');
-
-        prevBtn.disabled = (this.activeQuestionIndex === 0);
-        nextBtn.textContent = (this.activeQuestionIndex === questions.length - 1) ? 'Review & Submit →' : 'Next →';
-
-        const userAns = this.userAnswers[q.id];
-
-        let inputHtml = '';
-        if (q.question_type === 'mcq' || q.question_type === 'true_false') {
-            const letters = ['A', 'B', 'C', 'D', 'E'];
-            inputHtml = `
-                <div class="player-options-list">
-                    ${q.answers.map((ans, optIdx) => {
-                        const isSelected = (userAns === optIdx);
-                        const letter = letters[optIdx] || (optIdx + 1);
-                        return `
-                            <label class="player-option-label ${isSelected ? 'selected' : ''}">
-                                <input type="radio" name="player-q-opt" value="${optIdx}" ${isSelected ? 'checked' : ''} onchange="appState.recordPlayerOption(${q.id}, ${optIdx})">
-                                <span style="font-weight: 700; color: #4F46E5;">(${letter})</span>
-                                <span>${this.escapeHtml(ans.text)}</span>
-                            </label>
-                        `;
-                    }).join('')}
-                </div>
-            `;
-        } else {
-            inputHtml = `
-                <div>
-                    <label style="font-size: 0.88rem; font-weight: 600; color: #475569; display: block; margin-bottom: 8px;">
-                        Type your written answer below:
-                    </label>
-                    <textarea class="player-textarea" rows="6" placeholder="Provide a detailed response..." oninput="appState.recordPlayerText(${q.id}, this.value)">${this.escapeHtml(userAns || '')}</textarea>
-                </div>
-            `;
-        }
-
-        container.innerHTML = `
-            <div class="active-q-header">
-                <span class="active-q-num">Question ${this.activeQuestionIndex + 1} of ${questions.length}</span>
-                <span class="badge-pill pill-points">${q.points} Point${q.points !== 1 ? 's' : ''}</span>
-            </div>
-            <div class="active-q-text">${this.escapeHtml(q.question_text)}</div>
-            ${inputHtml}
-        `;
-
-        this.renderQuestionPalette();
-    }
-
-    recordPlayerOption(qId, optIdx) {
-        this.userAnswers[qId] = optIdx;
-        this.renderQuestionPalette();
-        // Update styling
-        document.querySelectorAll('.player-option-label').forEach((lbl, idx) => {
-            lbl.classList.toggle('selected', idx === optIdx);
-        });
-    }
-
-    recordPlayerText(qId, text) {
-        this.userAnswers[qId] = text;
-        this.renderQuestionPalette();
-    }
-
-    goToQuestion(idx) {
-        if (idx < 0 || idx >= this.currentExam.questions.length) return;
-        this.activeQuestionIndex = idx;
-        this.renderActiveQuestion();
-    }
-
-    prevQuestion() {
-        if (this.activeQuestionIndex > 0) {
-            this.goToQuestion(this.activeQuestionIndex - 1);
-        }
-    }
-
-    nextQuestion() {
-        if (this.activeQuestionIndex < this.currentExam.questions.length - 1) {
-            this.goToQuestion(this.activeQuestionIndex + 1);
-        } else {
-            this.confirmSubmitExam();
-        }
-    }
-
-    toggleFlagCurrentQuestion() {
-        const q = this.currentExam.questions[this.activeQuestionIndex];
-        if (!q) return;
-        if (this.flaggedQuestions.has(q.id)) {
-            this.flaggedQuestions.delete(q.id);
-        } else {
-            this.flaggedQuestions.add(q.id);
-        }
-        this.renderQuestionPalette();
-    }
-
-    confirmSubmitExam() {
-        const total = this.currentExam.questions.length;
-        const answered = Object.keys(this.userAnswers).filter(k => String(this.userAnswers[k]).trim() !== '').length;
-        const unanswered = total - answered;
-        const flagged = this.flaggedQuestions.size;
-
-        let warning = `You have answered ${answered} of ${total} questions.`;
-        if (unanswered > 0) {
-            warning += `\n⚠️ You have ${unanswered} unanswered question(s).`;
-        }
-        if (flagged > 0) {
-            warning += `\n🚩 You have ${flagged} question(s) flagged for review.`;
-        }
-        warning += '\n\nAre you sure you want to finish and submit for grading?';
-
-        if (confirm(warning)) {
-            this.submitExam();
-        }
-    }
-
-    async submitExam() {
-        this.stopTimer();
-        const timeTaken = Math.floor((Date.now() - (this.examStartTime || Date.now())) / 1000);
-        const studentName = document.getElementById('player-student-name').value.trim() || 'Student';
-
-        this.showLoading('Grading objective answers & running AI subjective evaluation...');
-
-        try {
-            const res = await fetch(`${API_BASE}/submit-attempt`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    exam_id: this.currentExam.id,
-                    student_name: studentName,
-                    answers: this.userAnswers,
-                    time_taken: timeTaken,
-                    provider: this.settings.provider,
-                    api_key: this.getActiveApiKey()
-                })
-            });
-            const data = await res.json();
-            if (data.success) {
-                this.currentAttempt = data.attempt;
-                this.renderResults(data, timeTaken);
-                this.navigateTo('results');
-                this.showToast('Exam submitted & graded!', 'success');
-            } else {
-                this.showToast(data.error || 'Failed to submit exam', 'error');
-            }
-        } catch (e) {
-            this.showToast('Error submitting exam', 'error');
-        } finally {
-            this.hideLoading();
-        }
-    }
-
-    // -------------------------------------------------------------
-    // Results & Auto-Grading Logic
-    // -------------------------------------------------------------
-    renderResults(data, timeTaken) {
-        const score = data.score || 0;
-        const pointsEarned = data.points_earned || 0;
-        const totalPoints = data.total_points || this.currentExam.total_points;
-        const passed = data.passed || false;
-        const passingScore = this.currentExam.passing_score || 70;
-
-        // Radial Circle
-        const scoreCircle = document.getElementById('result-score-circle');
-        const scorePct = document.getElementById('result-score-percentage');
-        scorePct.textContent = `${Math.round(score)}%`;
-        scoreCircle.style.background = `conic-gradient(${passed ? '#10B981' : '#EF4444'} ${score}%, rgba(255,255,255,0.15) ${score}%)`;
-
-        // Badge & Headline
-        const badge = document.getElementById('result-status-badge');
-        const headline = document.getElementById('result-headline');
-        const summaryText = document.getElementById('result-summary-text');
-
-        if (passed) {
-            badge.textContent = 'PASSED';
-            badge.className = 'result-badge badge-pass';
-            headline.textContent = score >= 90 ? 'Outstanding Performance! 🌟' : 'Congratulations! You Passed 👍';
-            summaryText.textContent = `You exceeded the required passing threshold of ${passingScore}%.`;
-        } else {
-            badge.textContent = 'NEEDS IMPROVEMENT';
-            badge.className = 'result-badge badge-fail';
-            headline.textContent = 'Keep Practicing! 💪';
-            summaryText.textContent = `You scored below the passing mark of ${passingScore}%. Review the explanations below.`;
-        }
-
-        // Stats
-        document.getElementById('result-points-earned').textContent = `${pointsEarned.toFixed(1)} / ${totalPoints.toFixed(1)}`;
-        document.getElementById('result-time-taken').textContent = this.formatSeconds(timeTaken);
-        document.getElementById('result-passing-score').textContent = `${passingScore}%`;
-
-        // Render Breakdown List
-        const list = document.getElementById('results-breakdown-list');
-        const questions = this.currentExam.questions;
-        const feedback = data.feedback || {};
-
-        list.innerHTML = questions.map((q, idx) => {
-            const userAns = this.userAnswers[q.id];
-            const qFeedback = feedback[String(q.id)] || feedback[q.id] || {};
-            const qScore = (qFeedback.score !== undefined) ? qFeedback.score : 0;
-
-            let cardClass = 'incorrect';
-            let statusLabel = '✖ Incorrect';
-            if (qScore >= q.points) {
-                cardClass = 'correct';
-                statusLabel = '✔ Correct';
-            } else if (qScore > 0) {
-                cardClass = 'partial';
-                statusLabel = '⚡ Partial Credit';
-            }
-
-            let answerReviewHtml = '';
-            if (q.question_type === 'mcq' || q.question_type === 'true_false') {
-                const letters = ['A', 'B', 'C', 'D', 'E'];
-                answerReviewHtml = q.answers.map((ans, optIdx) => {
-                    const isSelected = (userAns === optIdx);
-                    const isCorrect = ans.is_correct;
-                    const letter = letters[optIdx] || (optIdx + 1);
-
-                    let optClass = 'review-opt';
-                    let suffix = '';
-                    if (isCorrect) {
-                        optClass += ' is-correct-ans';
-                        suffix = ' <strong style="color: #059669;">[CORRECT ANSWER]</strong>';
-                    } else if (isSelected && !isCorrect) {
-                        optClass += ' is-user-wrong';
-                        suffix = ' <span style="color: #DC2626;">[YOUR CHOICE]</span>';
-                    }
-
-                    return `<div class="${optClass}">(${letter}) ${this.escapeHtml(ans.text)} ${suffix}</div>`;
-                }).join('');
-            } else {
-                answerReviewHtml = `
-                    <div style="margin: 8px 0; font-size: 0.92rem;">
-                        <strong>Your Submitted Response:</strong>
-                        <div style="background: #F8FAFC; padding: 10px; border-radius: 6px; margin-top: 4px; border: 1px solid #E2E8F0;">
-                            ${userAns ? this.escapeHtml(userAns) : '<em>No answer submitted</em>'}
-                        </div>
-                    </div>
-                    <div style="margin: 8px 0; font-size: 0.92rem;">
-                        <strong>Expected Model Answer / Rubric:</strong>
-                        <div style="background: #ECFDF5; padding: 10px; border-radius: 6px; margin-top: 4px; border: 1px solid #A7F3D0; color: #065F46;">
-                            ${this.escapeHtml(q.correct_answer || q.rubric || 'Detailed in explanation')}
-                        </div>
-                    </div>
-                `;
-            }
-
-            return `
-                <div class="result-review-card ${cardClass}">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <span style="font-weight: 800; font-size: 0.95rem;">Question ${idx + 1} (${q.question_type.toUpperCase()})</span>
-                        <span style="font-weight: 700; font-size: 0.85rem;">Score: ${qScore.toFixed(1)} / ${q.points} pts</span>
-                    </div>
-                    <div style="font-size: 1.05rem; font-weight: 600; margin-bottom: 12px; color: #0F172A;">
-                        ${this.escapeHtml(q.question_text)}
-                    </div>
-
-                    ${answerReviewHtml}
-
-                    ${qFeedback.feedback ? `<div class="feedback-bubble">💡 <strong>AI Evaluation:</strong> ${this.escapeHtml(qFeedback.feedback)}</div>` : ''}
-
-                    <div style="margin-top: 10px; font-size: 0.85rem; color: #475569; background: #F8FAFC; padding: 8px 12px; border-radius: 6px;">
-                        📖 <strong>Explanation:</strong> ${this.escapeHtml(q.justification || 'Refer to course syllabus.')}
-                        ${q.source_page ? `<span style="margin-left: 14px; color: #64748B;">Source: Page ${q.source_page}</span>` : ''}
-                    </div>
-                </div>
-            `;
-        }).join('');
-    }
-
-    retakeExam() {
-        this.startExamWithCurrent();
-    }
-
-    // -------------------------------------------------------------
-    // Export Hub Logic
-    // -------------------------------------------------------------
-    loadExportHub() {
-        const titleEl = document.getElementById('export-exam-title');
-        if (this.currentExam) {
-            titleEl.textContent = `Exporting: ${this.currentExam.title} (${this.currentExam.num_questions} Questions • ${this.currentExam.total_points || this.currentExam.num_questions} pts)`;
-        } else {
-            titleEl.textContent = 'Select an exam from the dashboard to download export packages.';
-        }
-    }
-
-    triggerExport(format, type = 'student') {
-        if (!this.currentExam) {
-            alert('Please select or generate an exam first.');
-            return;
-        }
-
-        const url = `${API_BASE}/export/${this.currentExam.id}/${format}?type=${type}`;
-        if (format === 'html') {
-            window.open(url, '_blank');
-        } else {
-            // Download file
-            window.location.href = url;
-        }
-    }
-
-    // -------------------------------------------------------------
-    // UI Helpers & Utilities
-    // -------------------------------------------------------------
-    showLoading(message = 'Processing...') {
-        document.getElementById('loading-message').textContent = message;
-        document.getElementById('loading-overlay').classList.remove('hidden');
-    }
-
-    hideLoading() {
-        document.getElementById('loading-overlay').classList.add('hidden');
-    }
-
     showToast(message, type = 'info') {
         const container = document.getElementById('toast-container');
         if (!container) return;
 
         const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
-        toast.textContent = message;
+        toast.className = `toast toast-${type}`;
+        
+        let iconName = 'info';
+        if (type === 'success') iconName = 'check-circle-2';
+        if (type === 'error') iconName = 'alert-circle';
+
+        toast.innerHTML = `
+            <i data-lucide="${iconName}" class="w-4 h-4"></i>
+            <span>${this.escapeHtml(message)}</span>
+        `;
+
         container.appendChild(toast);
+        this.renderIcons();
 
         setTimeout(() => {
             toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.3s ease';
             setTimeout(() => toast.remove(), 300);
-        }, 3200);
+        }, 3500);
     }
 
     formatSeconds(sec) {
         const m = Math.floor(sec / 60);
         const s = sec % 60;
-        return `${m}:${s.toString().padStart(2, '0')}`;
+        return `${m}m ${s}s`;
     }
 
     escapeHtml(str) {
@@ -1242,8 +1441,7 @@ class AppState {
 }
 
 // Global initialization
-let appState = null;
+let appState;
 document.addEventListener('DOMContentLoaded', () => {
     appState = new AppState();
-    window.appState = appState;
 });

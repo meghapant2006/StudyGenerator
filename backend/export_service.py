@@ -55,12 +55,12 @@ class ExportService:
                     if is_teacher and ans.is_correct:
                         options_html.append(f"""
                             <li class="option-item correct">
-                                <span class="marker correct-marker">✔ ({letter})</span>
+                                <span class="marker correct-marker">[CORRECT] ({letter})</span>
                                 <span class="opt-text"><strong>{html.escape(ans.text)}</strong> <span class="badge-correct">(CORRECT)</span></span>
                             </li>
                         """)
                     else:
-                        bubble = "⭕" if not is_teacher else f"({letter})"
+                        bubble = "[   ]" if not is_teacher else f"({letter})"
                         options_html.append(f"""
                             <li class="option-item">
                                 <span class="marker">{bubble}</span>
@@ -74,8 +74,8 @@ class ExportService:
                     corr_tf = "True" if any(a.text.lower() == 'true' and a.is_correct for a in q.answers) else "False"
                     body_html = f"""
                         <div class="tf-options">
-                            <span class="tf-item {'correct' if corr_tf == 'True' else ''}">✔ True</span>
-                            <span class="tf-item {'correct' if corr_tf == 'False' else ''}">✔ False</span>
+                            <span class="tf-item {'correct' if corr_tf == 'True' else ''}">[CORRECT] True</span>
+                            <span class="tf-item {'correct' if corr_tf == 'False' else ''}">[CORRECT] False</span>
                             <span class="badge-correct" style="margin-left:15px;">Correct Answer: {corr_tf}</span>
                         </div>
                     """
@@ -131,7 +131,7 @@ class ExportService:
                 if q.justification:
                     notes.append(f"<p><strong>Explanation:</strong> {html.escape(q.justification)}</p>")
                 if q.source_page:
-                    notes.append(f"<p class='source-meta'>📖 <strong>Source Reference:</strong> Page {q.source_page}{' (' + html.escape(q.source_section) + ')' if q.source_section else ''}</p>")
+                    notes.append(f"<p class='source-meta'><strong>Source Reference:</strong> Page {q.source_page}{' (' + html.escape(q.source_section) + ')' if q.source_section else ''}</p>")
                 if notes:
                     teacher_notes = f'<div class="explanation-box">{"".join(notes)}</div>'
 
@@ -363,12 +363,18 @@ class ExportService:
 </head>
 <body>
     <div class="print-btn-bar">
-        <button class="print-btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
+        <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
     </div>
 
     <div class="exam-paper">
         <header class="paper-header">
-            <span class="paper-type-badge">{title_prefix}</span>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <img src="/assets/icon.png" alt="StudyWise AI" style="width: 36px; height: 36px; object-fit: contain; border-radius: 8px;"/>
+                    <span style="font-size: 14pt; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">StudyWise AI</span>
+                </div>
+                <span class="paper-type-badge">{title_prefix}</span>
+            </div>
             <h1 class="paper-title">{html.escape(exam.title)}</h1>
             <div class="paper-meta">
                 <span><strong>Questions:</strong> {len(exam.questions)}</span>

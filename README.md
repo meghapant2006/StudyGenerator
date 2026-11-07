@@ -5,7 +5,7 @@ A modern, full-featured AI-powered assessment platform designed for educators, i
 
 ---
 
-## ✨ Features & Capabilities
+## Features & Capabilities
 
 ### 1. Multi-Source Assessment Generation
 - **PDF Documents**: Upload academic syllabi, textbooks, and scanned notes with Tesseract OCR fallback.
@@ -49,7 +49,7 @@ A modern, full-featured AI-powered assessment platform designed for educators, i
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Backend**: Python 3.8+ with Flask & Flask-CORS
 - **PDF & OCR**: PyMuPDF (fitz) + Tesseract OCR
@@ -60,7 +60,7 @@ A modern, full-featured AI-powered assessment platform designed for educators, i
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Installation
 ```bash
@@ -93,7 +93,7 @@ http://127.0.0.1:5000/
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```
 PDF/
