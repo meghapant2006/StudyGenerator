@@ -1711,13 +1711,13 @@ class AppState {
             if (tabsHeader) tabsHeader.classList.remove('hidden');
             if (tabLogin) {
                 tabLogin.className = tab === 'login'
-                    ? 'py-2 rounded-lg bg-white text-indigo-600 shadow-xs transition-all font-semibold'
-                    : 'py-2 rounded-lg text-slate-600 hover:text-slate-900 transition-all font-medium';
+                    ? 'py-2 rounded-xl bg-white text-[#675BFF] shadow-xs transition-all font-semibold cursor-pointer'
+                    : 'py-2 rounded-xl text-slate-600 hover:text-slate-900 transition-all font-medium cursor-pointer';
             }
             if (tabSignup) {
                 tabSignup.className = tab === 'signup'
-                    ? 'py-2 rounded-lg bg-white text-indigo-600 shadow-xs transition-all font-semibold'
-                    : 'py-2 rounded-lg text-slate-600 hover:text-slate-900 transition-all font-medium';
+                    ? 'py-2 rounded-xl bg-white text-[#675BFF] shadow-xs transition-all font-semibold cursor-pointer'
+                    : 'py-2 rounded-xl text-slate-600 hover:text-slate-900 transition-all font-medium cursor-pointer';
             }
         } else {
             if (tabsHeader) tabsHeader.classList.add('hidden');

@@ -2001,93 +2001,93 @@
 
     <!-- Modal 5: Unified Authentication Modal (Sign In, Sign Up, Forgot & Reset Password) -->
     <div id="modal-auth" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-        <div class="bg-white rounded-3xl border border-slate-200/90 max-w-lg w-full p-6 sm:p-8 shadow-2xl space-y-6 animate-scaleIn">
+        <div class="bg-white rounded-3xl border border-slate-200/90 max-w-md w-full max-h-[92vh] overflow-y-auto p-5 sm:p-7 shadow-2xl space-y-4 sm:space-y-5 animate-scaleIn">
             <!-- Modal Header -->
-            <div class="flex items-center justify-between pb-1 border-b border-slate-100">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div class="flex items-center gap-3">
-                    <img src="assets/icon.png" alt="StudyGeneratorExam Logo" class="w-10 h-10 object-contain"/>
+                    <img src="assets/icon.png" alt="StudyGeneratorExam Logo" class="w-9 h-9 object-contain flex-shrink-0"/>
                     <div>
-                        <h2 class="text-xl font-extrabold text-slate-900 tracking-tight">Study<span class="text-[#675BFF]">Generator</span> Exam</h2>
+                        <h2 class="text-lg font-extrabold text-slate-900 tracking-tight leading-tight">Study<span class="text-[#675BFF]">Generator</span> Exam</h2>
                         <p class="text-xs text-slate-500 font-medium">AI Assessment & Examination Platform</p>
                     </div>
                 </div>
-                <button type="button" onclick="appState.closeAuthModal()" class="text-slate-400 hover:text-slate-600 p-2 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer">
+                <button type="button" onclick="appState.closeAuthModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer" aria-label="Close modal">
                     <i data-lucide="x" class="w-5 h-5"></i>
                 </button>
             </div>
 
             <!-- Tab Switcher (Login / Signup) -->
-            <div id="auth-tabs-header" class="grid grid-cols-2 gap-1.5 bg-slate-100 p-1.5 rounded-2xl text-sm font-bold">
-                <button id="tab-auth-login" onclick="appState.switchAuthTab('login')" class="py-2.5 rounded-xl bg-white text-[#675BFF] shadow-xs transition-all cursor-pointer">Sign In</button>
-                <button id="tab-auth-signup" onclick="appState.switchAuthTab('signup')" class="py-2.5 rounded-xl text-slate-600 hover:text-slate-900 transition-all cursor-pointer">Create Account</button>
+            <div id="auth-tabs-header" class="grid grid-cols-2 gap-1 bg-slate-100 p-1 rounded-2xl text-xs font-bold">
+                <button id="tab-auth-login" onclick="appState.switchAuthTab('login')" class="py-2 rounded-xl bg-white text-[#675BFF] shadow-xs transition-all cursor-pointer">Sign In</button>
+                <button id="tab-auth-signup" onclick="appState.switchAuthTab('signup')" class="py-2 rounded-xl text-slate-600 hover:text-slate-900 transition-all cursor-pointer">Create Account</button>
             </div>
 
             <!-- TAB 1: LOGIN -->
             <div id="auth-panel-login" class="space-y-4">
-                <form onsubmit="appState.handleLogin(event)" class="space-y-4">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5" for="login-email">Email or Mobile Number</label>
-                        <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                                <i data-lucide="mail" class="w-4 h-4"></i>
-                            </div>
-                            <input id="login-email" type="text" required placeholder="name@university.edu or +91 98765 43210" class="w-full pl-10 pr-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"/>
-                        </div>
-                    </div>
-                    <div>
-                        <div class="flex items-center justify-between mb-1.5">
-                            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider" for="login-password">Password</label>
-                            <button type="button" onclick="appState.switchAuthTab('forgot')" class="text-xs font-semibold text-[#675BFF] hover:text-[#5B4EFF] cursor-pointer">Forgot password?</button>
-                        </div>
-                        <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                                <i data-lucide="lock" class="w-4 h-4"></i>
-                            </div>
-                            <input id="login-password" type="password" required placeholder="Enter your password" class="w-full pl-10 pr-11 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"/>
-                            <button type="button" onclick="appState.togglePasswordVisibility('login-password', 'login-eye-icon')" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer">
-                                <i data-lucide="eye" id="login-eye-icon" class="w-4 h-4"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="flex items-center justify-between text-sm text-slate-600 pt-0.5">
-                        <label class="flex items-center gap-2 cursor-pointer select-none text-xs font-medium text-slate-700">
-                            <input id="login-remember" type="checkbox" checked class="rounded text-[#675BFF] focus:ring-indigo-500 w-4 h-4"/>
-                            <span>Remember this device</span>
-                        </label>
-                    </div>
-                    <button id="btn-login-submit" type="submit" class="w-full py-3.5 rounded-full text-white font-bold text-sm shadow-md hover:shadow-lg hover:opacity-95 transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer" style="background: linear-gradient(90deg, #6A87FF 0%, #675BFF 100%);">
-                        <span>Sign In</span>
-                        <i data-lucide="arrow-right" class="w-4 h-4"></i>
-                    </button>
-                </form>
-
-                <div class="relative flex items-center justify-center py-1">
-                    <div class="border-t border-slate-200 w-full"></div>
-                    <span class="bg-white px-3 text-xs font-semibold text-slate-400 absolute">or continue with</span>
-                </div>
-
-                <!-- Google Action -->
-                <button type="button" onclick="appState.loginWithGoogle()" class="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-50 text-slate-800 font-bold text-sm py-3 px-4 rounded-full border border-slate-200 shadow-xs transition-all active:scale-[0.98] cursor-pointer">
-                    <svg class="w-4.5 h-4.5 flex-shrink-0" viewBox="0 0 24 24">
+                <!-- Google Action Button -->
+                <button type="button" onclick="appState.loginWithGoogle()" class="w-full flex items-center justify-center gap-2.5 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs py-2.5 px-4 rounded-xl border border-slate-200 hover:border-slate-300 shadow-2xs transition-all active:scale-[0.99] cursor-pointer">
+                    <svg class="w-4 h-4 flex-shrink-0" width="18" height="18" style="width: 18px; height: 18px; min-width: 18px; max-width: 18px;" viewBox="0 0 24 24">
                         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                         <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
                         <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
                         <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
                     </svg>
-                    <span>Google Account</span>
+                    <span>Continue with Google</span>
                 </button>
 
+                <div class="relative flex items-center justify-center py-0.5">
+                    <div class="border-t border-slate-200/80 w-full"></div>
+                    <span class="bg-white px-2.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider absolute">or with credentials</span>
+                </div>
+
+                <form onsubmit="appState.handleLogin(event)" class="space-y-3.5">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1" for="login-email">Email or Mobile Number</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                <i data-lucide="mail" class="w-4 h-4"></i>
+                            </div>
+                            <input id="login-email" type="text" required placeholder="name@university.edu or +91 98765 43210" class="w-full pl-11 pr-4 py-2.5 text-sm bg-slate-50/80 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#675BFF] focus:bg-white focus:ring-2 focus:ring-indigo-100 transition-all"/>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="text-xs font-semibold text-slate-700" for="login-password">Password</label>
+                            <button type="button" onclick="appState.switchAuthTab('forgot')" class="text-xs font-semibold text-[#675BFF] hover:text-[#5B4EFF] hover:underline cursor-pointer">Forgot password?</button>
+                        </div>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                <i data-lucide="lock" class="w-4 h-4"></i>
+                            </div>
+                            <input id="login-password" type="password" required placeholder="Enter your password" class="w-full pl-11 pr-10 py-2.5 text-sm bg-slate-50/80 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#675BFF] focus:bg-white focus:ring-2 focus:ring-indigo-100 transition-all"/>
+                            <button type="button" onclick="appState.togglePasswordVisibility('login-password', 'login-eye-icon')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer" aria-label="Toggle password visibility">
+                                <i data-lucide="eye" id="login-eye-icon" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-xs text-slate-600 pt-0.5">
+                        <label class="flex items-center gap-2 cursor-pointer select-none font-medium text-slate-700">
+                            <input id="login-remember" type="checkbox" checked class="rounded text-[#675BFF] focus:ring-indigo-500 w-4 h-4"/>
+                            <span>Remember this device</span>
+                        </label>
+                    </div>
+                    <button id="btn-login-submit" type="submit" class="w-full py-2.5 rounded-xl text-white font-bold text-sm shadow-md hover:shadow-lg hover:opacity-95 transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer" style="background: linear-gradient(90deg, #6A87FF 0%, #675BFF 100%);">
+                        <span>Sign In</span>
+                        <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                    </button>
+                </form>
+
                 <!-- Quick Preset Selector for Testing -->
-                <div class="pt-2 text-xs text-slate-500 bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 space-y-2">
-                    <p class="font-bold text-slate-700 flex items-center gap-1.5">
+                <div class="pt-2 text-xs text-slate-500 bg-slate-50/80 border border-slate-200/80 rounded-2xl p-3 space-y-1.5">
+                    <p class="font-bold text-slate-700 flex items-center gap-1.5 text-[11px] uppercase tracking-wider">
                         <i data-lucide="key" class="w-3.5 h-3.5 text-indigo-600"></i>
                         <span>Instant Demo Accounts:</span>
                     </p>
                     <div class="flex flex-wrap gap-2">
-                        <button type="button" onclick="appState.fillLoginPreset('educator@studygeneratorexam.com', 'EducatorPass123!')" class="px-3.5 py-1.5 rounded-full bg-white border border-slate-200 hover:border-indigo-300 text-[#675BFF] font-semibold text-xs transition-colors cursor-pointer shadow-2xs">
+                        <button type="button" onclick="appState.fillLoginPreset('educator@studygeneratorexam.com', 'EducatorPass123!')" class="px-3 py-1 rounded-full bg-white border border-slate-200 hover:border-indigo-300 text-[#675BFF] font-semibold text-xs transition-colors cursor-pointer shadow-2xs">
                             Educator Demo
                         </button>
-                        <button type="button" onclick="appState.fillLoginPreset('admin@studygeneratorexam.com', 'AdminPass123!')" class="px-3.5 py-1.5 rounded-full bg-white border border-slate-200 hover:border-indigo-300 text-slate-700 font-semibold text-xs transition-colors cursor-pointer shadow-2xs">
+                        <button type="button" onclick="appState.fillLoginPreset('admin@studygeneratorexam.com', 'AdminPass123!')" class="px-3 py-1 rounded-full bg-white border border-slate-200 hover:border-indigo-300 text-slate-700 font-semibold text-xs transition-colors cursor-pointer shadow-2xs">
                             Admin Demo
                         </button>
                     </div>
@@ -2095,83 +2095,10 @@
             </div>
 
             <!-- TAB 2: SIGN UP (with Email & Mobile No.) -->
-            <div id="auth-panel-signup" class="space-y-4 hidden">
-                <form onsubmit="appState.handleSignup(event)" class="space-y-3.5">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5" for="signup-name">Full Name</label>
-                        <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                                <i data-lucide="user" class="w-4 h-4"></i>
-                            </div>
-                            <input id="signup-name" type="text" required placeholder="e.g. Prof. Alex Morgan" class="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"/>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5" for="signup-email">Email Address</label>
-                        <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                                <i data-lucide="mail" class="w-4 h-4"></i>
-                            </div>
-                            <input id="signup-email" type="email" required placeholder="name@university.edu" class="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"/>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5" for="signup-phone">Mobile Number</label>
-                        <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                                <i data-lucide="phone" class="w-4 h-4"></i>
-                            </div>
-                            <input id="signup-phone" type="tel" placeholder="+91 98765 43210" class="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"/>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5" for="signup-institution">University / Department (Optional)</label>
-                        <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                                <i data-lucide="building" class="w-4 h-4"></i>
-                            </div>
-                            <input id="signup-institution" type="text" placeholder="e.g. Stanford University" class="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"/>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5" for="signup-password">Password</label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                                    <i data-lucide="lock" class="w-3.5 h-3.5"></i>
-                                </div>
-                                <input id="signup-password" type="password" required minlength="8" placeholder="Min. 8 chars" class="w-full pl-8 pr-9 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"/>
-                                <button type="button" onclick="appState.togglePasswordVisibility('signup-password', 'signup-eye-1')" class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer">
-                                    <i data-lucide="eye" id="signup-eye-1" class="w-3.5 h-3.5"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5" for="signup-confirm-password">Confirm Password</label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                                    <i data-lucide="lock" class="w-3.5 h-3.5"></i>
-                                </div>
-                                <input id="signup-confirm-password" type="password" required minlength="8" placeholder="Repeat" class="w-full pl-8 pr-9 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"/>
-                                <button type="button" onclick="appState.togglePasswordVisibility('signup-confirm-password', 'signup-eye-2')" class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer">
-                                    <i data-lucide="eye" id="signup-eye-2" class="w-3.5 h-3.5"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    <button id="btn-signup-submit" type="submit" class="w-full py-3.5 rounded-full text-white font-bold text-sm shadow-md hover:shadow-lg hover:opacity-95 transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer" style="background: linear-gradient(90deg, #BA64FF 0%, #AC46FF 100%);">
-                        <span>Create Account</span>
-                        <i data-lucide="user-plus" class="w-4 h-4"></i>
-                    </button>
-                </form>
-
+            <div id="auth-panel-signup" class="space-y-3.5 hidden">
                 <!-- Google Signup -->
-                <div class="relative flex items-center justify-center py-0.5">
-                    <div class="border-t border-slate-200 w-full"></div>
-                    <span class="bg-white px-3 text-xs font-semibold text-slate-400 absolute">or</span>
-                </div>
-                <button type="button" onclick="appState.loginWithGoogle()" class="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-50 text-slate-800 font-bold text-sm py-2.5 px-4 rounded-full border border-slate-200 shadow-xs transition-all active:scale-[0.98] cursor-pointer">
-                    <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24">
+                <button type="button" onclick="appState.loginWithGoogle()" class="w-full flex items-center justify-center gap-2.5 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs py-2.5 px-4 rounded-xl border border-slate-200 hover:border-slate-300 shadow-2xs transition-all active:scale-[0.99] cursor-pointer">
+                    <svg class="w-4 h-4 flex-shrink-0" width="18" height="18" style="width: 18px; height: 18px; min-width: 18px; max-width: 18px;" viewBox="0 0 24 24">
                         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                         <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
                         <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
@@ -2179,28 +2106,102 @@
                     </svg>
                     <span>Sign up with Google</span>
                 </button>
-            </div>
 
-            <!-- TAB 3: FORGOT PASSWORD -->
-            <div id="auth-panel-forgot" class="space-y-4 hidden">
-                <div class="text-sm text-slate-600">
-                    Enter your account email and we'll generate a secure, time-limited password reset token.
+                <div class="relative flex items-center justify-center py-0.5">
+                    <div class="border-t border-slate-200/80 w-full"></div>
+                    <span class="bg-white px-2.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider absolute">or enter details</span>
                 </div>
-                <form onsubmit="appState.handleForgotPassword(event)" class="space-y-4">
+
+                <form onsubmit="appState.handleSignup(event)" class="space-y-3">
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5" for="forgot-email">Account Email</label>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1" for="signup-name">Full Name</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                <i data-lucide="user" class="w-4 h-4"></i>
+                            </div>
+                            <input id="signup-name" type="text" required placeholder="e.g. Prof. Alex Morgan" class="w-full pl-11 pr-4 py-2 text-sm bg-slate-50/80 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#BA64FF] focus:bg-white focus:ring-2 focus:ring-purple-100 transition-all"/>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1" for="signup-email">Email Address</label>
                         <div class="relative">
                             <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                                 <i data-lucide="mail" class="w-4 h-4"></i>
                             </div>
-                            <input id="forgot-email" type="email" required placeholder="name@university.edu" class="w-full pl-10 pr-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-indigo-500"/>
+                            <input id="signup-email" type="email" required placeholder="name@university.edu" class="w-full pl-11 pr-4 py-2 text-sm bg-slate-50/80 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#BA64FF] focus:bg-white focus:ring-2 focus:ring-purple-100 transition-all"/>
                         </div>
                     </div>
-                    <button type="submit" class="w-full py-3.5 rounded-full text-white font-bold text-sm shadow-md transition-all active:scale-95 cursor-pointer" style="background: linear-gradient(90deg, #6A87FF 0%, #675BFF 100%);">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1" for="signup-phone">Mobile Number</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                <i data-lucide="phone" class="w-4 h-4"></i>
+                            </div>
+                            <input id="signup-phone" type="tel" placeholder="+91 98765 43210" class="w-full pl-11 pr-4 py-2 text-sm bg-slate-50/80 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#BA64FF] focus:bg-white focus:ring-2 focus:ring-purple-100 transition-all"/>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1" for="signup-institution">University / Department (Optional)</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                <i data-lucide="building" class="w-4 h-4"></i>
+                            </div>
+                            <input id="signup-institution" type="text" placeholder="e.g. Stanford University" class="w-full pl-11 pr-4 py-2 text-sm bg-slate-50/80 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#BA64FF] focus:bg-white focus:ring-2 focus:ring-purple-100 transition-all"/>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1" for="signup-password">Password</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                    <i data-lucide="lock" class="w-3.5 h-3.5"></i>
+                                </div>
+                                <input id="signup-password" type="password" required minlength="8" placeholder="Min. 8 chars" class="w-full pl-9 pr-8 py-2 text-sm bg-slate-50/80 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#BA64FF] focus:bg-white focus:ring-2 focus:ring-purple-100 transition-all"/>
+                                <button type="button" onclick="appState.togglePasswordVisibility('signup-password', 'signup-eye-1')" class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer" aria-label="Toggle password visibility">
+                                    <i data-lucide="eye" id="signup-eye-1" class="w-3.5 h-3.5"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1" for="signup-confirm-password">Confirm Password</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                    <i data-lucide="lock" class="w-3.5 h-3.5"></i>
+                                </div>
+                                <input id="signup-confirm-password" type="password" required minlength="8" placeholder="Repeat" class="w-full pl-9 pr-8 py-2 text-sm bg-slate-50/80 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#BA64FF] focus:bg-white focus:ring-2 focus:ring-purple-100 transition-all"/>
+                                <button type="button" onclick="appState.togglePasswordVisibility('signup-confirm-password', 'signup-eye-2')" class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer" aria-label="Toggle password visibility">
+                                    <i data-lucide="eye" id="signup-eye-2" class="w-3.5 h-3.5"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <button id="btn-signup-submit" type="submit" class="w-full py-2.5 rounded-xl text-white font-bold text-sm shadow-md hover:shadow-lg hover:opacity-95 transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer mt-1" style="background: linear-gradient(90deg, #BA64FF 0%, #AC46FF 100%);">
+                        <span>Create Account</span>
+                        <i data-lucide="user-plus" class="w-4 h-4"></i>
+                    </button>
+                </form>
+            </div>
+
+            <!-- TAB 3: FORGOT PASSWORD -->
+            <div id="auth-panel-forgot" class="space-y-4 hidden">
+                <div class="text-xs text-slate-600">
+                    Enter your account email and we'll generate a secure password reset token.
+                </div>
+                <form onsubmit="appState.handleForgotPassword(event)" class="space-y-3.5">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1" for="forgot-email">Account Email</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                <i data-lucide="mail" class="w-4 h-4"></i>
+                            </div>
+                            <input id="forgot-email" type="email" required placeholder="name@university.edu" class="w-full pl-11 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-indigo-500"/>
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full py-2.5 rounded-xl text-white font-bold text-sm shadow-md transition-all active:scale-95 cursor-pointer" style="background: linear-gradient(90deg, #6A87FF 0%, #675BFF 100%);">
                         Send Reset Token
                     </button>
-                    <div class="text-center pt-2">
-                        <button type="button" onclick="appState.switchAuthTab('login')" class="text-sm text-[#675BFF] font-semibold hover:underline cursor-pointer">
+                    <div class="text-center pt-1">
+                        <button type="button" onclick="appState.switchAuthTab('login')" class="text-xs text-[#675BFF] font-semibold hover:underline cursor-pointer">
                             Back to Sign In
                         </button>
                     </div>
@@ -2209,19 +2210,19 @@
 
             <!-- TAB 4: RESET PASSWORD -->
             <div id="auth-panel-reset" class="space-y-4 hidden">
-                <div class="text-sm text-slate-600">
+                <div class="text-xs text-slate-600">
                     Paste your reset token below and create your new password.
                 </div>
-                <form onsubmit="appState.handleResetPassword(event)" class="space-y-4">
+                <form onsubmit="appState.handleResetPassword(event)" class="space-y-3.5">
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5" for="reset-token-input">Reset Token</label>
-                        <input id="reset-token-input" type="text" required placeholder="Token from email" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-mono focus:outline-none focus:border-indigo-500"/>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1" for="reset-token-input">Reset Token</label>
+                        <input id="reset-token-input" type="text" required placeholder="Token from email" class="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-mono focus:outline-none focus:border-indigo-500"/>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5" for="reset-new-password">New Password</label>
-                        <input id="reset-new-password" type="password" required minlength="8" placeholder="Min. 8 chars (letters + numbers)" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500"/>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1" for="reset-new-password">New Password</label>
+                        <input id="reset-new-password" type="password" required minlength="8" placeholder="Min. 8 chars (letters + numbers)" class="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500"/>
                     </div>
-                    <button type="submit" class="w-full py-3.5 rounded-full text-white font-bold text-sm shadow-md transition-all active:scale-95 cursor-pointer" style="background: linear-gradient(90deg, #6A87FF 0%, #675BFF 100%);">
+                    <button type="submit" class="w-full py-2.5 rounded-xl text-white font-bold text-sm shadow-md transition-all active:scale-95 cursor-pointer" style="background: linear-gradient(90deg, #6A87FF 0%, #675BFF 100%);">
                         Set New Password
                     </button>
                 </form>
