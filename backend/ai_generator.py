@@ -8,9 +8,10 @@ import json
 import logging
 import os
 import re
+import time
 import urllib.request
 import urllib.error
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional, Union, Tuple
 
 from config import AI_API_KEY, AI_MODEL, AI_TEMPERATURE, AI_MAX_TOKENS
 from models import Question, Answer
@@ -79,17 +80,21 @@ class AIQuestionGenerator:
         question_config: Dict[str, int],
         difficulty: str = "medium",
         target_audience: str = "General",
-        source_type: str = "pdf"
+        source_type: str = "pdf",
+        subject: str = "General",
+        language: str = "English"
     ) -> List[Question]:
         """
         Generate questions across requested types based on source content
         
         Args:
             content: Dict of page -> text, or string of raw text/topic
-            question_config: Dict like {'mcq': 5, 'true_false': 3, 'short_answer': 2, 'essay': 1}
+            question_config: Dict like {'mcq': 5, 'true_false': 3, 'short_answer': 2, 'essay': 1, 'fill_blank': 2}
             difficulty: 'easy' | 'medium' | 'hard' | 'mixed'
             target_audience: Target level
-            source_type: 'pdf' | 'text' | 'topic'
+            source_type: 'pdf' | 'text' | 'topic' | 'url'
+            subject: Academic subject domain
+            language: Target exam language
         """
         # Normalize text content
         text_context, page_refs = self._normalize_content(content)
@@ -99,23 +104,23 @@ class AIQuestionGenerator:
             question_config = {'mcq': 5, 'true_false': 3, 'short_answer': 2}
             total_requested = 10
             
-        logger.info(f"Generating {total_requested} questions ({question_config}) using {self.provider}")
+        logger.info(f"Generating {total_requested} questions ({question_config}) using {self.provider} [Subject: {subject}, Lang: {language}]")
 
         # If provider is demo or no API key, use the intelligent offline generator
         if self.provider == 'demo' or not self.api_key:
-            return self._generate_offline(text_context, question_config, difficulty, page_refs)
+            return self._generate_offline(text_context, question_config, difficulty, page_refs, subject=subject, language=language)
             
-        # Try LLM generation, fallback to demo if API fails
+        # Try LLM generation with schema validation and retry loop, fallback to demo if API fails
         try:
             if self.provider == 'gemini':
-                return self._generate_with_gemini(text_context, question_config, difficulty, target_audience, page_refs)
+                return self._generate_with_gemini(text_context, question_config, difficulty, target_audience, page_refs, subject=subject, language=language)
             elif self.provider == 'openai':
-                return self._generate_with_openai(text_context, question_config, difficulty, target_audience, page_refs)
+                return self._generate_with_openai(text_context, question_config, difficulty, target_audience, page_refs, subject=subject, language=language)
             else:
-                return self._generate_offline(text_context, question_config, difficulty, page_refs)
+                return self._generate_offline(text_context, question_config, difficulty, page_refs, subject=subject, language=language)
         except Exception as e:
             logger.warning(f"AI API failed ({str(e)}). Falling back to offline question generator.")
-            return self._generate_offline(text_context, question_config, difficulty, page_refs)
+            return self._generate_offline(text_context, question_config, difficulty, page_refs, subject=subject, language=language)
 
     def regenerate_question(
         self,
@@ -248,13 +253,31 @@ Respond ONLY with valid JSON:
         q_config: Dict[str, int],
         difficulty: str,
         target_audience: str,
-        page_refs: Dict[int, str]
+        page_refs: Dict[int, str],
+        subject: str = "General",
+        language: str = "English"
     ) -> List[Question]:
-        """Generate questions using Google Gemini API via REST"""
-        prompt = self._build_prompt(content, q_config, difficulty, target_audience)
-        raw_response = self._call_gemini_api(prompt)
-        parsed = self._extract_json(raw_response)
-        return self._parse_questions_json(parsed, page_refs)
+        """Generate questions using Google Gemini API via REST with retry & validation"""
+        prompt = self._build_prompt(content, q_config, difficulty, target_audience, subject=subject, language=language)
+        max_retries = 3
+        last_error = ""
+        
+        for attempt in range(max_retries):
+            try:
+                curr_prompt = prompt if attempt == 0 else f"{prompt}\n\nIMPORTANT: Previous attempt failed validation with error: {last_error}. Ensure strictly valid JSON matching the exact schema."
+                raw_response = self._call_gemini_api(curr_prompt)
+                parsed = self._extract_json(raw_response)
+                is_valid, err_msg = self._validate_questions_schema(parsed)
+                if is_valid:
+                    return self._parse_questions_json(parsed, page_refs)
+                last_error = err_msg
+                logger.warning(f"Gemini schema validation failed on attempt {attempt + 1}: {err_msg}")
+            except Exception as e:
+                last_error = str(e)
+                logger.warning(f"Gemini API attempt {attempt + 1} encountered error: {e}")
+            time.sleep(1)
+            
+        raise RuntimeError(f"Gemini question generation failed after {max_retries} attempts: {last_error}")
 
     def _call_gemini_api(self, prompt: str) -> str:
         """Call Gemini REST API"""
@@ -295,13 +318,31 @@ Respond ONLY with valid JSON:
         q_config: Dict[str, int],
         difficulty: str,
         target_audience: str,
-        page_refs: Dict[int, str]
+        page_refs: Dict[int, str],
+        subject: str = "General",
+        language: str = "English"
     ) -> List[Question]:
-        """Generate questions using OpenAI API"""
-        prompt = self._build_prompt(content, q_config, difficulty, target_audience)
-        raw_response = self._call_openai_api(prompt)
-        parsed = self._extract_json(raw_response)
-        return self._parse_questions_json(parsed, page_refs)
+        """Generate questions using OpenAI API with retry & validation"""
+        prompt = self._build_prompt(content, q_config, difficulty, target_audience, subject=subject, language=language)
+        max_retries = 3
+        last_error = ""
+        
+        for attempt in range(max_retries):
+            try:
+                curr_prompt = prompt if attempt == 0 else f"{prompt}\n\nIMPORTANT: Previous attempt failed validation with error: {last_error}. Ensure strictly valid JSON matching the exact schema."
+                raw_response = self._call_openai_api(curr_prompt)
+                parsed = self._extract_json(raw_response)
+                is_valid, err_msg = self._validate_questions_schema(parsed)
+                if is_valid:
+                    return self._parse_questions_json(parsed, page_refs)
+                last_error = err_msg
+                logger.warning(f"OpenAI schema validation failed on attempt {attempt + 1}: {err_msg}")
+            except Exception as e:
+                last_error = str(e)
+                logger.warning(f"OpenAI API attempt {attempt + 1} encountered error: {e}")
+            time.sleep(1)
+            
+        raise RuntimeError(f"OpenAI question generation failed after {max_retries} attempts: {last_error}")
 
     def _call_openai_api(self, prompt: str) -> str:
         """Call OpenAI or compatible chat completion endpoint"""
@@ -336,13 +377,23 @@ Respond ONLY with valid JSON:
             res_data = json.loads(response.read().decode('utf-8'))
             return res_data['choices'][0]['message']['content']
 
-    def _build_prompt(self, content: str, q_config: Dict[str, int], difficulty: str, target_audience: str) -> str:
+    def _build_prompt(
+        self,
+        content: str,
+        q_config: Dict[str, int],
+        difficulty: str,
+        target_audience: str,
+        subject: str = "General",
+        language: str = "English"
+    ) -> str:
         """Construct structured prompt for LLM"""
         req_lines = []
         if q_config.get('mcq', 0) > 0:
             req_lines.append(f"- {q_config['mcq']} Multiple Choice Questions (4 options, exactly 1 correct)")
         if q_config.get('true_false', 0) > 0:
             req_lines.append(f"- {q_config['true_false']} True/False Questions")
+        if q_config.get('fill_blank', 0) > 0:
+            req_lines.append(f"- {q_config['fill_blank']} Fill-in-the-Blank Questions (use '[blank]' in the question_text, provide the exact 'correct_answer', and include common acceptable alternative variations in answers: [{{'text': '...', 'is_correct': true}}])")
         if q_config.get('short_answer', 0) > 0:
             req_lines.append(f"- {q_config['short_answer']} Short Answer Questions with model answer and grading rubric")
         if q_config.get('essay', 0) > 0:
@@ -356,16 +407,18 @@ SOURCE MATERIAL:
 {content[:5000]}
 
 REQUIREMENTS:
-1. Target Audience: {target_audience}
-2. Difficulty: {difficulty}
-3. Question Breakdown:
+1. Subject / Domain: {subject}
+2. Target Language: {language} (ALL questions, options, explanations, and rubrics MUST be written in {language})
+3. Target Audience: {target_audience}
+4. Difficulty: {difficulty}
+5. Question Breakdown:
 {req_str}
-4. For each question provide:
-   - "question_text": Clear, precise question
-   - "question_type": "mcq", "true_false", "short_answer", or "essay"
-   - "answers": For MCQ, list 4 options [{{"text": "...", "is_correct": true/false}}]. For true_false, [{{"text": "True", "is_correct": true/false}}, {{"text": "False", "is_correct": true/false}}]. For short_answer/essay, empty array.
+6. For each question provide:
+   - "question_text": Clear, precise question (for fill_blank, use '[blank]' where the word/phrase belongs)
+   - "question_type": "mcq", "true_false", "fill_blank", "short_answer", or "essay"
+   - "answers": For MCQ, list 4 options [{{"text": "...", "is_correct": true/false}}]. For true_false, [{{"text": "True", "is_correct": true/false}}, {{"text": "False", "is_correct": true/false}}]. For fill_blank, list acceptable synonyms/casings [{{"text": "...", "is_correct": true}}]. For short_answer/essay, empty array.
    - "correct_answer": The exact correct answer string / model response
-   - "points": Point value (1.0 for MCQ/TrueFalse, 2.0-5.0 for Short Answer, 5.0-10.0 for Essay)
+   - "points": Point value (1.0 for MCQ/TrueFalse/fill_blank, 2.0-5.0 for Short Answer, 5.0-10.0 for Essay)
    - "justification": Detailed pedagogical explanation of why this answer is correct
    - "rubric": For short_answer/essay, key criteria for scoring
    - "source_page": Page number if identified, else 1
@@ -392,6 +445,43 @@ OUTPUT JSON FORMAT:
     }}
   ]
 }}"""
+
+    def _validate_questions_schema(self, data: Any) -> Tuple[bool, str]:
+        """Validate JSON against strict exam question schema"""
+        if not isinstance(data, dict):
+            if isinstance(data, list):
+                data = {'questions': data}
+            else:
+                return False, "Root data must be a JSON object with a 'questions' array"
+                
+        questions = data.get('questions')
+        if not isinstance(questions, list) or len(questions) == 0:
+            return False, "'questions' array is missing or empty"
+            
+        valid_types = {'mcq', 'true_false', 'fill_blank', 'short_answer', 'essay'}
+        for i, q in enumerate(questions):
+            if not isinstance(q, dict):
+                return False, f"Question at index {i} is not a valid JSON object"
+            q_text = q.get('question_text')
+            if not q_text or not isinstance(q_text, str) or not q_text.strip():
+                return False, f"Question at index {i} missing non-empty 'question_text'"
+            q_type = q.get('question_type')
+            if q_type not in valid_types:
+                return False, f"Question at index {i} has invalid question_type: {q_type}"
+            if q_type in ('mcq', 'true_false'):
+                answers = q.get('answers')
+                if not isinstance(answers, list) or len(answers) < 2:
+                    return False, f"Question at index {i} of type '{q_type}' must have at least 2 answers"
+            if not q.get('correct_answer'):
+                return False, f"Question at index {i} missing 'correct_answer'"
+            try:
+                pts = float(q.get('points', 1.0))
+                if pts <= 0:
+                    return False, f"Question at index {i} points must be > 0"
+            except (ValueError, TypeError):
+                return False, f"Question at index {i} has non-numeric points"
+                
+        return True, ""
 
     def _extract_json(self, raw_text: str) -> Any:
         """Extract JSON object from string even if wrapped in markdown codeblocks"""
@@ -433,12 +523,14 @@ OUTPUT JSON FORMAT:
         content: str,
         q_config: Dict[str, int],
         difficulty: str,
-        page_refs: Dict[int, str]
+        page_refs: Dict[int, str],
+        subject: str = "General",
+        language: str = "English"
     ) -> List[Question]:
         """
         High quality rule-based question generator.
         Extracts key sentences, entities, and definitions from source material.
-        Generates genuine questions so user can immediately test with 0 API keys.
+        Generates genuine questions across mcq, true_false, fill_blank, short_answer, and essay.
         """
         questions: List[Question] = []
         
@@ -493,7 +585,7 @@ OUTPUT JSON FORMAT:
                 points=1.0,
                 justification=f"As stated in the source text: \"{sent}\"",
                 source_page=1,
-                source_section="Key Concepts",
+                source_section=f"{subject} - Key Concepts",
                 order_index=q_idx
             ))
             q_idx += 1
@@ -524,15 +616,46 @@ OUTPUT JSON FORMAT:
                 points=1.0,
                 justification=just,
                 source_page=1,
-                source_section="Comprehension",
+                source_section=f"{subject} - Comprehension",
                 order_index=q_idx
             ))
             q_idx += 1
 
-        # 3. Generate Short Answer Questions
+        # 3. Generate Fill-in-the-Blank Questions
+        fb_count = q_config.get('fill_blank', 0)
+        for i in range(fb_count):
+            sent = sentences[(i + mcq_count + tf_count) % len(sentences)]
+            words_in_sent = [w for w in re.findall(r'\b[A-Za-z]{4,}\b', sent) if w.lower() not in ('with', 'from', 'this', 'that', 'were', 'which', 'about', 'their')]
+            target_word = words_in_sent[len(words_in_sent) // 2] if words_in_sent else "system"
+            
+            blank_sent = re.sub(r'\b' + re.escape(target_word) + r'\b', "[blank]", sent, count=1, flags=re.IGNORECASE)
+            if "[blank]" not in blank_sent:
+                blank_sent = f"{sent} [blank]"
+                
+            alt_answers = [
+                Answer(text=target_word, is_correct=True),
+                Answer(text=target_word.lower(), is_correct=True),
+                Answer(text=target_word.capitalize(), is_correct=True)
+            ]
+            
+            questions.append(Question(
+                question_text=f"Fill in the blank: \"{blank_sent}\"",
+                question_type="fill_blank",
+                answers=alt_answers,
+                correct_answer=target_word,
+                points=1.0,
+                justification=f"Context from source material: \"{sent}\"",
+                rubric=f"Exact match or acceptable variant of '{target_word}'.",
+                source_page=1,
+                source_section=f"{subject} - Cloze Assessment",
+                order_index=q_idx
+            ))
+            q_idx += 1
+
+        # 4. Generate Short Answer Questions
         sa_count = q_config.get('short_answer', 0)
         for i in range(sa_count):
-            sent = sentences[(i + mcq_count + tf_count) % len(sentences)]
+            sent = sentences[(i + mcq_count + tf_count + fb_count) % len(sentences)]
             q_text = f"Explain the significance of the following principle mentioned in the material: \"{sent[:80]}...\""
             
             questions.append(Question(
@@ -544,12 +667,12 @@ OUTPUT JSON FORMAT:
                 justification=f"Key reference: \"{sent}\"",
                 rubric="Student should articulate the concept and state its practical significance.",
                 source_page=1,
-                source_section="Analysis",
+                source_section=f"{subject} - Analysis",
                 order_index=q_idx
             ))
             q_idx += 1
 
-        # 4. Generate Essay Questions
+        # 5. Generate Essay Questions
         essay_count = q_config.get('essay', 0)
         for i in range(essay_count):
             topic_hint = sentences[0][:60]
@@ -564,7 +687,7 @@ OUTPUT JSON FORMAT:
                 justification="Requires synthetic understanding and critical evaluation of the subject matter.",
                 rubric="1. Accuracy of core definitions (2 pts)\n2. Practical applications (2 pts)\n3. Critical analysis and clarity (1 pt)",
                 source_page=1,
-                source_section="Synthesis & Evaluation",
+                source_section=f"{subject} - Synthesis & Evaluation",
                 order_index=q_idx
             ))
             q_idx += 1

@@ -20,9 +20,11 @@ class AppState {
         this.questionCounts = {
             mcq: 5,
             tf: 2,
-            short: 2,
+            fill: 1,
+            short: 1,
             essay: 1
         };
+        this.currentScrapedUrl = null;
 
         // Exam Player State
         this.activeQuestionIndex = 0;
@@ -171,8 +173,8 @@ class AppState {
                     : 'nav-btn w-full flex items-center gap-3 text-left font-medium text-sm px-4 py-2.5 rounded-xl text-slate-700 hover:bg-slate-100 transition-all';
             } else {
                 btn.className = isMatch
-                    ? 'nav-btn font-semibold text-[15px] text-[#654BFF] transition-colors cursor-pointer select-none whitespace-nowrap'
-                    : 'nav-btn font-medium text-[15px] text-slate-700 hover:text-[#654BFF] transition-colors cursor-pointer select-none whitespace-nowrap';
+                    ? 'nav-btn font-semibold text-[15px] text-[#675BFF] transition-colors cursor-pointer select-none whitespace-nowrap'
+                    : 'nav-btn font-medium text-[15px] text-slate-700 hover:text-slate-900 transition-colors cursor-pointer select-none whitespace-nowrap';
             }
         });
 
@@ -344,21 +346,76 @@ class AppState {
     switchWizardTab(tab) {
         this.sourceTab = tab;
 
-        const tabs = ['pdf', 'topic', 'text'];
+        const tabs = ['pdf', 'topic', 'text', 'url'];
         tabs.forEach(t => {
             const btn = document.getElementById(`tab-btn-${t}`);
             const panel = document.getElementById(`panel-source-${t}`);
 
-            if (t === tab) {
-                btn.className = 'wizard-tab py-2 px-3 rounded-lg bg-white text-indigo-600 font-semibold shadow-xs text-xs flex items-center justify-center gap-1.5 transition-all';
-                panel.classList.remove('hidden');
-            } else {
-                btn.className = 'wizard-tab py-2 px-3 rounded-lg text-slate-600 hover:text-slate-900 font-medium text-xs flex items-center justify-center gap-1.5 transition-all';
-                panel.classList.add('hidden');
+            if (btn && panel) {
+                if (t === tab) {
+                    btn.className = 'wizard-tab py-2 px-2.5 rounded-lg bg-white text-indigo-600 font-bold shadow-xs text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all';
+                    panel.classList.remove('hidden');
+                } else {
+                    btn.className = 'wizard-tab py-2 px-2.5 rounded-lg text-slate-600 hover:text-slate-900 font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all';
+                    panel.classList.add('hidden');
+                }
             }
         });
 
         this.renderIcons();
+    }
+
+    async fetchUrlContent() {
+        const urlInput = document.getElementById('url-source-input');
+        const url = (urlInput.value || '').trim();
+        if (!url) {
+            this.showToast('Please enter a valid URL', 'warning');
+            return;
+        }
+
+        const fetchBtn = document.getElementById('btn-fetch-url');
+        fetchBtn.disabled = true;
+        fetchBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>Fetching...</span>';
+        this.renderIcons();
+
+        try {
+            const res = await fetch(`${API_BASE}/scrape-url`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url })
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                this.currentScrapedUrl = data;
+                document.getElementById('url-fetched-card').classList.remove('hidden');
+                document.getElementById('url-title-display').textContent = data.title || url;
+                document.getElementById('url-words-display').textContent = `${data.word_count || 0} words extracted`;
+                document.getElementById('url-excerpt-display').textContent = data.excerpt || 'Article text extracted.';
+
+                const titleInput = document.getElementById('exam-title-input');
+                if (!titleInput.value.trim() && data.title) {
+                    titleInput.value = `Assessment: ${data.title.substring(0, 50)}`;
+                }
+
+                this.showToast('Web page content extracted successfully!', 'success');
+                this.renderIcons();
+            } else {
+                this.showToast(data.error || 'Failed to extract content from URL', 'error');
+            }
+        } catch (e) {
+            this.showToast('Network error while scraping URL', 'error');
+        } finally {
+            fetchBtn.disabled = false;
+            fetchBtn.innerHTML = '<i data-lucide="download" class="w-4 h-4"></i><span>Fetch</span>';
+            this.renderIcons();
+        }
+    }
+
+    removeScrapedUrl() {
+        this.currentScrapedUrl = null;
+        document.getElementById('url-fetched-card').classList.add('hidden');
+        document.getElementById('url-source-input').value = '';
     }
 
     // -------------------------------------------------------------
@@ -446,6 +503,8 @@ class AppState {
     // -------------------------------------------------------------
     async generateExam() {
         const title = document.getElementById('exam-title-input').value.trim() || 'Comprehensive Academic Assessment';
+        const subject = document.getElementById('exam-subject-select')?.value || 'General';
+        const language = document.getElementById('exam-language-select')?.value || 'English';
         const difficulty = document.getElementById('exam-difficulty-select').value;
         const targetAudience = document.getElementById('exam-target-audience').value;
         const timeLimit = parseInt(document.getElementById('exam-time-limit').value, 10) || 0;
@@ -459,6 +518,8 @@ class AppState {
 
         const payload = {
             title,
+            subject,
+            language,
             difficulty,
             target_audience: targetAudience,
             time_limit: timeLimit,
@@ -466,6 +527,7 @@ class AppState {
             question_counts: {
                 mcq: this.questionCounts.mcq,
                 true_false: this.questionCounts.tf,
+                fill_blank: this.questionCounts.fill || 0,
                 short_answer: this.questionCounts.short,
                 essay: this.questionCounts.essay
             },
@@ -475,20 +537,20 @@ class AppState {
 
         if (this.sourceTab === 'pdf') {
             if (!this.currentPdf || !this.currentPdf.pdf_id) {
-                this.showToast('Please upload a PDF document first', 'error');
+                this.showToast('Please upload a PDF or document first', 'error');
                 return;
             }
             payload.source_type = 'pdf';
             payload.pdf_id = this.currentPdf.pdf_id;
         } else if (this.sourceTab === 'topic') {
-            const subject = document.getElementById('topic-subject-input').value.trim();
+            const topicSubject = document.getElementById('topic-subject-input').value.trim();
             const objectives = document.getElementById('topic-objectives-input').value.trim();
-            if (!subject) {
+            if (!topicSubject) {
                 this.showToast('Please enter a subject topic', 'error');
                 return;
             }
             payload.source_type = 'topic';
-            payload.topic = subject;
+            payload.topic = topicSubject;
             payload.prompt = objectives ? `Focus areas & objectives: ${objectives}` : '';
         } else if (this.sourceTab === 'text') {
             const rawText = document.getElementById('pasted-text-input').value.trim();
@@ -498,37 +560,54 @@ class AppState {
             }
             payload.source_type = 'text';
             payload.text = rawText;
+        } else if (this.sourceTab === 'url') {
+            if (!this.currentScrapedUrl || !this.currentScrapedUrl.content) {
+                this.showToast('Please fetch article content from a web link first', 'error');
+                return;
+            }
+            payload.source_type = 'url';
+            payload.url = this.currentScrapedUrl.url;
+            payload.content = this.currentScrapedUrl.content;
         }
 
-        // Show Progress Bar
+        // Show Full-Screen Animated Progress Modal
         const btn = document.getElementById('btn-generate-exam');
-        const progressBox = document.getElementById('generation-progress-box');
-        const progressBar = document.getElementById('generation-progress-bar');
-        const stageText = document.getElementById('generation-stage-text');
-        const pctText = document.getElementById('generation-pct-text');
+        const modal = document.getElementById('modal-generation-progress');
+        const progressBar = document.getElementById('gen-progress-bar');
+        const stepLabel = document.getElementById('gen-progress-step-label');
+        const percentLabel = document.getElementById('gen-progress-percent');
 
         btn.disabled = true;
         btn.classList.add('opacity-60', 'cursor-not-allowed');
-        progressBox.classList.remove('hidden');
+        if (modal) modal.classList.remove('hidden');
 
-        // Animated progress stages
-        let stageIdx = 0;
-        const stages = [
-            { pct: 20, text: 'Extracting corpus structure & cognitive concepts...' },
-            { pct: 45, text: 'Synthesizing question stems & distractor options...' },
-            { pct: 75, text: 'Generating scoring rubrics & pedagogical rationales...' },
-            { pct: 95, text: 'Finalizing assessment blueprint...' }
-        ];
+        let stepIndex = 1;
+        const stepInterval = setInterval(() => {
+            if (stepIndex < 4) {
+                stepIndex++;
+                const pct = stepIndex * 25;
+                if (progressBar) progressBar.style.width = `${pct}%`;
+                if (percentLabel) percentLabel.textContent = `${pct}%`;
+                if (stepLabel) stepLabel.textContent = `Step ${stepIndex} of 4`;
 
-        const progressInterval = setInterval(() => {
-            if (stageIdx < stages.length) {
-                progressBar.style.width = `${stages[stageIdx].pct}%`;
-                pctText.textContent = `${stages[stageIdx].pct}%`;
-                stageText.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin text-indigo-600 inline-block mr-1"></i> ${stages[stageIdx].text}`;
+                const prevEl = document.getElementById(`gen-step-${stepIndex - 1}`);
+                const prevIcon = document.getElementById(`gen-step-icon-${stepIndex - 1}`);
+                if (prevEl && prevIcon) {
+                    prevEl.className = 'flex items-center gap-3 text-emerald-600 font-semibold';
+                    prevIcon.className = 'w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0';
+                    prevIcon.innerHTML = '<i data-lucide="check" class="w-3.5 h-3.5"></i>';
+                }
+
+                const currEl = document.getElementById(`gen-step-${stepIndex}`);
+                const currIcon = document.getElementById(`gen-step-icon-${stepIndex}`);
+                if (currEl && currIcon) {
+                    currEl.className = 'flex items-center gap-3 font-semibold text-indigo-600';
+                    currIcon.className = 'w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0';
+                    currIcon.innerHTML = '<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i>';
+                }
                 this.renderIcons();
-                stageIdx++;
             }
-        }, 1800);
+        }, 1600);
 
         try {
             const res = await fetch(`${API_BASE}/generate`, {
@@ -537,36 +616,46 @@ class AppState {
                 body: JSON.stringify(payload)
             });
 
-            clearInterval(progressInterval);
+            clearInterval(stepInterval);
 
             if (res.ok) {
                 const exam = await res.json();
                 this.currentExam = exam;
 
-                progressBar.style.width = '100%';
-                pctText.textContent = '100%';
-                stageText.innerHTML = '<span class="text-emerald-600 font-bold">Exam generation complete!</span>';
+                if (progressBar) progressBar.style.width = '100%';
+                if (percentLabel) percentLabel.textContent = '100%';
+                if (stepLabel) stepLabel.textContent = 'Complete!';
+
+                // Mark step 4 as complete
+                const s4 = document.getElementById('gen-step-4');
+                const s4Icon = document.getElementById('gen-step-icon-4');
+                if (s4 && s4Icon) {
+                    s4.className = 'flex items-center gap-3 text-emerald-600 font-semibold';
+                    s4Icon.className = 'w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0';
+                    s4Icon.innerHTML = '<i data-lucide="check" class="w-3.5 h-3.5"></i>';
+                }
+                this.renderIcons();
 
                 setTimeout(() => {
                     btn.disabled = false;
                     btn.classList.remove('opacity-60', 'cursor-not-allowed');
-                    progressBox.classList.add('hidden');
+                    if (modal) modal.classList.add('hidden');
                     this.showToast('Assessment generated successfully!', 'success');
                     this.navigateTo('editor');
-                }, 800);
+                }, 600);
             } else {
                 const err = await res.json();
-                clearInterval(progressInterval);
+                clearInterval(stepInterval);
                 btn.disabled = false;
                 btn.classList.remove('opacity-60', 'cursor-not-allowed');
-                progressBox.classList.add('hidden');
+                if (modal) modal.classList.add('hidden');
                 this.showToast(`Generation failed: ${err.error || 'Unknown error'}`, 'error');
             }
         } catch (error) {
-            clearInterval(progressInterval);
+            clearInterval(stepInterval);
             btn.disabled = false;
             btn.classList.remove('opacity-60', 'cursor-not-allowed');
-            progressBox.classList.add('hidden');
+            if (modal) modal.classList.add('hidden');
             this.showToast('Network error during AI exam generation', 'error');
         }
     }
@@ -648,6 +737,21 @@ class AppState {
                         }).join('')}
                     </div>
                 `;
+            } else if (q.question_type === 'fill_blank') {
+                optionsHtml = `
+                    <div class="bg-indigo-50/40 border border-indigo-100 rounded-xl p-4 text-sm space-y-2 mt-2">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-indigo-900 text-xs uppercase tracking-wider">Accepted Key Term:</span>
+                            <span class="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-mono font-bold text-xs">${this.escapeHtml(q.correct_answer)}</span>
+                        </div>
+                        ${q.answers && q.answers.length > 1 ? `
+                            <div class="text-xs text-slate-500 flex items-center gap-1.5 flex-wrap">
+                                <span class="font-semibold text-slate-700">Acceptable variants:</span>
+                                ${q.answers.map(a => `<code class="bg-white px-2 py-0.5 rounded border border-slate-200 font-mono text-slate-700">${this.escapeHtml(a.text)}</code>`).join(' ')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
             } else {
                 optionsHtml = `
                     <div class="bg-indigo-50/40 border border-indigo-100 rounded-xl p-4 text-sm space-y-1.5 mt-2">
@@ -669,7 +773,13 @@ class AppState {
                             </span>
                             ${q.source_page ? `<span class="text-xs text-slate-500 font-medium">Page ${q.source_page}</span>` : ''}
                         </div>
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-1.5">
+                            <button onclick="appState.moveQuestion(${idx}, -1)" ${idx === 0 ? 'disabled' : ''} class="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed text-slate-600 transition-all cursor-pointer" title="Move Up">
+                                <i data-lucide="chevron-up" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="appState.moveQuestion(${idx}, 1)" ${idx === filtered.length - 1 ? 'disabled' : ''} class="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed text-slate-600 transition-all cursor-pointer" title="Move Down">
+                                <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                            </button>
                             <button onclick="appState.openRegenerateModal(${q.id})" class="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold text-xs flex items-center gap-1.5 transition-all">
                                 <i data-lucide="wand-2" class="w-3.5 h-3.5"></i>
                                 <span>AI Regenerate</span>
@@ -703,6 +813,33 @@ class AppState {
         }).join('');
 
         this.renderIcons();
+    }
+
+    async moveQuestion(index, direction) {
+        if (!this.currentExam || !this.currentExam.questions) return;
+        const targetIndex = index + direction;
+        if (targetIndex < 0 || targetIndex >= this.currentExam.questions.length) return;
+
+        // Swap questions locally
+        const temp = this.currentExam.questions[index];
+        this.currentExam.questions[index] = this.currentExam.questions[targetIndex];
+        this.currentExam.questions[targetIndex] = temp;
+
+        // Update order indices
+        this.currentExam.questions.forEach((q, i) => { q.order_index = i; });
+        this.renderQuestions();
+
+        // Persist to backend
+        try {
+            const questionIds = this.currentExam.questions.map(q => q.id);
+            await fetch(`${API_BASE}/exams/${this.currentExam.id}/reorder`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ question_ids: questionIds })
+            });
+        } catch (e) {
+            console.error('Failed to sync reordered questions with server', e);
+        }
     }
 
     filterEditorByType(type) {
@@ -840,6 +977,13 @@ class AppState {
             payload.answers = [
                 { text: 'True', is_correct: true },
                 { text: 'False', is_correct: false }
+            ];
+            payload.correct_answer = 'True';
+        } else if (qType === 'fill_blank') {
+            const blankKey = qExplanation || 'keyword';
+            payload.correct_answer = blankKey;
+            payload.answers = [
+                { text: blankKey, is_correct: true }
             ];
         }
 
@@ -987,6 +1131,16 @@ class AppState {
                     </div>
                 `;
             }).join('');
+        } else if (q.question_type === 'fill_blank') {
+            container.innerHTML = `
+                <div class="space-y-3 bg-slate-50/70 p-5 rounded-2xl border border-slate-200/80">
+                    <label class="block text-sm font-bold text-slate-800">Complete the Blank with the Missing Term:</label>
+                    <div class="relative">
+                        <input type="text" oninput="appState.playerSaveTextAnswer(${q.id}, this.value)" value="${savedAnswer ? this.escapeHtml(savedAnswer) : ''}" class="w-full px-4 py-3 text-base bg-white border border-slate-200 rounded-xl text-slate-900 font-medium focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 shadow-xs" placeholder="Type your answer for [blank]..."/>
+                    </div>
+                    <p class="text-xs text-slate-500">Auto-graded on submission with spelling & casing flexibility.</p>
+                </div>
+            `;
         } else {
             container.innerHTML = `
                 <div class="space-y-2.5">
@@ -1231,6 +1385,23 @@ class AppState {
 
                     return `<div class="${optClass}">(${letter}) ${this.escapeHtml(ans.text)} ${marker}</div>`;
                 }).join('');
+            } else if (q.question_type === 'fill_blank') {
+                answerHtml = `
+                    <div class="space-y-2 mt-2 text-xs">
+                        <div>
+                            <strong class="text-slate-800">Your Submitted Term:</strong>
+                            <div class="bg-slate-50 border border-slate-200 rounded-lg p-2.5 mt-1 font-mono text-slate-800">
+                                ${userAns ? this.escapeHtml(userAns) : '<em class="text-slate-400">No response provided</em>'}
+                            </div>
+                        </div>
+                        <div>
+                            <strong class="text-emerald-800">Accepted Solution Key:</strong>
+                            <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 mt-1 text-emerald-950 font-mono font-bold">
+                                ${this.escapeHtml(q.correct_answer)}
+                            </div>
+                        </div>
+                    </div>
+                `;
             } else {
                 answerHtml = `
                     <div class="space-y-2 mt-2 text-xs">
@@ -1554,6 +1725,19 @@ class AppState {
         this.renderIcons();
     }
 
+    togglePasswordVisibility(inputId, iconId) {
+        const input = document.getElementById(inputId);
+        const iconEl = document.getElementById(iconId);
+        if (!input) return;
+        const isPassword = input.type === 'password';
+        input.type = isPassword ? 'text' : 'password';
+        if (iconEl && iconEl.parentElement) {
+            const iconSize = iconId.startsWith('signup') ? 'w-3.5 h-3.5' : 'w-4 h-4';
+            iconEl.parentElement.innerHTML = `<i data-lucide="${isPassword ? 'eye-off' : 'eye'}" id="${iconId}" class="${iconSize}"></i>`;
+            this.renderIcons();
+        }
+    }
+
     fillLoginPreset(email, password) {
         document.getElementById('login-email').value = email;
         document.getElementById('login-password').value = password;
@@ -1561,7 +1745,7 @@ class AppState {
 
     async handleLogin(event) {
         event.preventDefault();
-        const email = document.getElementById('login-email').value.trim();
+        const identifier = document.getElementById('login-email').value.trim();
         const password = document.getElementById('login-password').value;
         const rememberMe = document.getElementById('login-remember').checked;
         const submitBtn = document.getElementById('btn-login-submit');
@@ -1573,7 +1757,7 @@ class AppState {
             const res = await fetch(`${API_BASE}/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password, remember_me: rememberMe })
+                body: JSON.stringify({ email: identifier, identifier: identifier, password, remember_me: rememberMe })
             });
 
             const data = await res.json();
@@ -1591,7 +1775,7 @@ class AppState {
             this.showToast('Could not complete login. Please check server connection.', 'error');
         } finally {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = `<span>Sign In</span><i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>`;
+            submitBtn.innerHTML = `<span>Sign In</span><i data-lucide="arrow-right" class="w-4 h-4"></i>`;
             this.renderIcons();
         }
     }
@@ -1600,6 +1784,7 @@ class AppState {
         event.preventDefault();
         const name = document.getElementById('signup-name').value.trim();
         const email = document.getElementById('signup-email').value.trim();
+        const phone = (document.getElementById('signup-phone')?.value || '').trim();
         const institution = document.getElementById('signup-institution').value.trim();
         const password = document.getElementById('signup-password').value;
         const confirmPassword = document.getElementById('signup-confirm-password').value;
@@ -1617,7 +1802,7 @@ class AppState {
             const res = await fetch(`${API_BASE}/auth/signup`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, email, institution, password })
+                body: JSON.stringify({ name, email, phone, institution, password })
             });
 
             const data = await res.json();
@@ -1629,7 +1814,7 @@ class AppState {
                 this.saveUserToStorage(this.currentUser, data.token);
                 this.updateAuthUI(this.currentUser);
                 this.closeAuthModal();
-                this.showToast('Account created successfully! Welcome to StudyGeneratorExam.', 'success');
+                this.showToast(`Welcome back, ${data.user.name}! Account created successfully.`, 'success');
             } else {
                 this.showToast(data.error || 'Failed to create account.', 'error');
             }
@@ -1638,7 +1823,7 @@ class AppState {
             this.showToast('Signup request failed. Check server status.', 'error');
         } finally {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = `<span>Create Account</span><i data-lucide="user-plus" class="w-3.5 h-3.5"></i>`;
+            submitBtn.innerHTML = `<span>Create Account</span><i data-lucide="user-plus" class="w-4 h-4"></i>`;
             this.renderIcons();
         }
     }
@@ -1789,6 +1974,8 @@ class AppState {
         document.getElementById('prof-input-name').value = user.name || '';
         document.getElementById('prof-input-institution').value = user.institution || '';
         document.getElementById('prof-input-email').value = user.email || '';
+        const profPhone = document.getElementById('prof-input-phone');
+        if (profPhone) profPhone.value = user.phone || '';
 
         // If Google user without password, hide password change form
         const pwdBox = document.getElementById('prof-box-change-pwd');
@@ -1803,12 +1990,13 @@ class AppState {
         event.preventDefault();
         const name = document.getElementById('prof-input-name').value.trim();
         const institution = document.getElementById('prof-input-institution').value.trim();
+        const phone = (document.getElementById('prof-input-phone')?.value || '').trim();
 
         try {
             const res = await this.authFetch(`${API_BASE}/auth/profile`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, institution })
+                body: JSON.stringify({ name, institution, phone })
             });
 
             const data = await res.json();
@@ -2049,7 +2237,7 @@ class AppState {
         const verificationBanner = document.getElementById('email-verification-banner');
         const adminMenuLink = document.getElementById('menu-admin-link');
 
-        if (user && user.email) {
+        if (user && (user.email || user.phone)) {
             if (loggedOutActions) loggedOutActions.classList.add('hidden');
             if (userContainer) userContainer.classList.remove('hidden');
 
@@ -2059,14 +2247,23 @@ class AppState {
             const roleEl = document.getElementById('user-role-label');
             const menuName = document.getElementById('menu-user-name');
             const menuEmail = document.getElementById('menu-user-email');
+            const menuPhone = document.getElementById('menu-user-phone');
             const menuPlan = document.getElementById('menu-user-plan');
             const verifiedBadge = document.getElementById('menu-verified-badge');
 
             if (avatarEl) avatarEl.textContent = initials;
-            if (nameEl) nameEl.textContent = user.name;
+            if (nameEl) nameEl.textContent = user.name || 'User';
             if (roleEl) roleEl.textContent = user.role === 'admin' ? 'Administrator' : (user.institution || 'Instructor');
-            if (menuName) menuName.textContent = user.name;
-            if (menuEmail) menuEmail.textContent = user.email;
+            if (menuName) menuName.textContent = user.name || 'User';
+            if (menuEmail) menuEmail.textContent = user.email || '';
+            if (menuPhone) {
+                if (user.phone) {
+                    menuPhone.textContent = user.phone;
+                    menuPhone.classList.remove('hidden');
+                } else {
+                    menuPhone.classList.add('hidden');
+                }
+            }
             if (menuPlan) menuPlan.textContent = user.plan === 'institution' ? 'Institutional Pro' : (user.plan === 'pro' ? 'Pro Plan' : 'Free Tier');
 
             if (verifiedBadge) {
@@ -2079,7 +2276,7 @@ class AppState {
 
             // Verification banner check
             if (verificationBanner) {
-                if (!user.is_verified) {
+                if (!user.is_verified && user.email) {
                     verificationBanner.classList.remove('hidden');
                     const label = document.getElementById('unverified-email-label');
                     if (label) label.textContent = user.email;
@@ -2088,7 +2285,7 @@ class AppState {
                 }
             }
 
-            if (greetingName) greetingName.textContent = user.name.split(' ')[0] || 'Educator';
+            if (greetingName) greetingName.textContent = user.name || 'Educator';
         } else {
             if (loggedOutActions) loggedOutActions.classList.remove('hidden');
             if (userContainer) userContainer.classList.add('hidden');

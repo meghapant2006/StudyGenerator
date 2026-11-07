@@ -174,7 +174,57 @@ def run_auth_tests():
     assert admin_data['total'] >= 2
     print(f"[PASS] 16b. Admin verified: access granted to {admin_data['total']} users")
 
-    # 17. Account Deletion
+    # 17. Mobile Number Signup and Login Flow
+    mobile_user_email = "mobileuser@studygeneratorexam.com"
+    mobile_phone = "+91 9876543210"
+    existing_mob = db.get_user_by_email(mobile_user_email)
+    if existing_mob:
+        db.delete_user(existing_mob.id)
+
+    res = client.post('/api/auth/signup', json={
+        "email": mobile_user_email,
+        "phone": mobile_phone,
+        "password": "MobileUserPass2026!",
+        "name": "Prof. Rajesh Kumar",
+        "institution": "IIT Delhi"
+    })
+    assert res.status_code == 201
+    mob_signup_data = res.get_json()
+    assert mob_signup_data['success'] is True
+    assert mob_signup_data['user']['phone'] == mobile_phone
+    print(f"[PASS] 17a. User registered with mobile number: {mob_signup_data['user']['name']} ({mob_signup_data['user']['phone']})")
+
+    # Login using mobile number formatted
+    res = client.post('/api/auth/login', json={
+        "email": "+91 98765 43210",
+        "password": "MobileUserPass2026!"
+    })
+    assert res.status_code == 200
+    mob_token = res.get_json()['token']
+    assert res.get_json()['user']['email'] == mobile_user_email
+    print("[PASS] 17b. Login successful using mobile number with spaces/country code")
+
+    # Login using plain mobile digits
+    res = client.post('/api/auth/login', json={
+        "identifier": "9876543210",
+        "password": "MobileUserPass2026!"
+    })
+    assert res.status_code == 200
+    assert res.get_json()['user']['name'] == "Prof. Rajesh Kumar"
+    print("[PASS] 17c. Login successful using plain 10-digit mobile number")
+
+    # Update profile phone number
+    res = client.put('/api/auth/profile',
+                     headers={"Authorization": f"Bearer {mob_token}"},
+                     json={"name": "Prof. Rajesh Kumar", "institution": "IIT Bombay", "phone": "+91 9123456789"})
+    assert res.status_code == 200
+    assert res.get_json()['user']['phone'] == "+91 9123456789"
+    print("[PASS] 17d. Profile phone number updated successfully")
+
+    # Clean up mobile test user
+    db.delete_user(mob_signup_data['user']['id'])
+
+    # 18. Account Deletion
     # Emily deletes her account
     res = client.delete('/api/auth/account', 
                         headers={"Authorization": f"Bearer {token}"},
@@ -190,9 +240,9 @@ def run_auth_tests():
                           headers={"Authorization": f"Bearer {token}"},
                           json={"name": "Ghost"})
     assert res_prof.status_code == 401
-    print("[PASS] 17. User account deletion verified (session invalidated & 401 on protected route)")
+    print("[PASS] 18. User account deletion verified (session invalidated & 401 on protected route)")
 
-    print("\n=== ALL 17 PHASE 1 AUTHENTICATION TESTS PASSED WITH 100% SUCCESS ===")
+    print("\n=== ALL 18 PHASE 1 AUTHENTICATION TESTS PASSED WITH 100% SUCCESS ===")
 
 if __name__ == '__main__':
     run_auth_tests()

@@ -26,6 +26,7 @@ class User:
     plan: str = "free"  # 'free', 'pro', 'institution'
     monthly_exam_count: int = 0
     institution: str = ""
+    phone: str = ""
     created_at: str = ""
     last_login: str = ""
 
@@ -40,6 +41,7 @@ class User:
             'plan': self.plan,
             'monthly_exam_count': self.monthly_exam_count,
             'institution': self.institution or '',
+            'phone': self.phone or '',
             'created_at': self.created_at,
             'last_login': self.last_login or ''
         }

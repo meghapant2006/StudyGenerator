@@ -5,6 +5,7 @@ Supports schema auto-migration and extended CRUD operations
 """
 import sqlite3
 import json
+import re
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 from datetime import datetime
@@ -60,6 +61,7 @@ class Database:
                     plan TEXT NOT NULL DEFAULT 'free',
                     monthly_exam_count INTEGER NOT NULL DEFAULT 0,
                     institution TEXT DEFAULT '',
+                    phone TEXT DEFAULT '',
                     created_at TEXT NOT NULL,
                     last_login TEXT DEFAULT ''
                 )
@@ -242,6 +244,17 @@ class Database:
                 if col not in existing_att_cols:
                     cursor.execute(f"ALTER TABLE exam_attempts ADD COLUMN {col} {col_type}")
                     logger.info(f"Added column {col} to exam_attempts table")
+
+            # Columns to ensure in users
+            user_columns = {
+                'phone': 'TEXT DEFAULT ""'
+            }
+            cursor.execute("PRAGMA table_info(users)")
+            existing_user_cols = {row['name'] for row in cursor.fetchall()}
+            for col, col_type in user_columns.items():
+                if col not in existing_user_cols:
+                    cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {col_type}")
+                    logger.info(f"Added column {col} to users table")
 
             conn.commit()
 
@@ -756,7 +769,7 @@ class Database:
                     role: str = 'user', auth_provider: str = 'local',
                     google_id: str = '', is_verified: bool = False,
                     verification_token: str = '', institution: str = '',
-                    plan: str = 'free') -> User:
+                    phone: str = '', plan: str = 'free') -> User:
         """Create a new user record in the database"""
         now = datetime.now().isoformat()
         with self._get_connection() as conn:
@@ -765,12 +778,12 @@ class Database:
                 INSERT INTO users (
                     email, password_hash, name, role, auth_provider,
                     google_id, is_verified, verification_token,
-                    plan, monthly_exam_count, institution, created_at, last_login
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
+                    plan, monthly_exam_count, institution, phone, created_at, last_login
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)
             """, (
                 email.lower().strip(), password_hash, name.strip(), role,
                 auth_provider, google_id, 1 if is_verified else 0,
-                verification_token, plan, institution.strip(), now, now
+                verification_token, plan, institution.strip(), phone.strip(), now, now
             ))
             user_id = cursor.lastrowid
             conn.commit()
@@ -786,6 +799,34 @@ class Database:
             row = cursor.fetchone()
             if row:
                 return self._row_to_user(row)
+            return None
+
+    def get_user_by_email_or_phone(self, identifier: str) -> Optional[User]:
+        """Fetch user by email or mobile phone number"""
+        if not identifier:
+            return None
+        clean = identifier.strip().lower()
+        clean_digits = re.sub(r'\D', '', clean)
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM users 
+                WHERE LOWER(email) = LOWER(?) OR (phone != '' AND phone = ?)
+            """, (clean, clean))
+            row = cursor.fetchone()
+            if row:
+                return self._row_to_user(row)
+            if len(clean_digits) >= 7:
+                cursor.execute("SELECT * FROM users WHERE phone != ''")
+                for r in cursor.fetchall():
+                    r_digits = re.sub(r'\D', '', r['phone'] or '')
+                    if r_digits:
+                        if r_digits == clean_digits:
+                            return self._row_to_user(r)
+                        if len(clean_digits) >= 10 and r_digits.endswith(clean_digits):
+                            return self._row_to_user(r)
+                        if len(r_digits) >= 10 and clean_digits.endswith(r_digits):
+                            return self._row_to_user(r)
             return None
 
     def get_user_by_id(self, user_id: int) -> Optional[User]:
@@ -870,22 +911,20 @@ class Database:
             conn.commit()
             return True
 
-    def update_user_profile(self, user_id: int, name: str, institution: Optional[str] = None) -> Optional[User]:
-        """Update user name and institution"""
+    def update_user_profile(self, user_id: int, name: str, institution: Optional[str] = None, phone: Optional[str] = None) -> Optional[User]:
+        """Update user name, institution, and phone"""
         with self._get_connection() as conn:
             cursor = conn.cursor()
+            updates = ["name = ?"]
+            params = [name.strip()]
             if institution is not None:
-                cursor.execute("""
-                    UPDATE users
-                    SET name = ?, institution = ?
-                    WHERE id = ?
-                """, (name.strip(), institution.strip(), user_id))
-            else:
-                cursor.execute("""
-                    UPDATE users
-                    SET name = ?
-                    WHERE id = ?
-                """, (name.strip(), user_id))
+                updates.append("institution = ?")
+                params.append(institution.strip())
+            if phone is not None:
+                updates.append("phone = ?")
+                params.append(phone.strip())
+            params.append(user_id)
+            cursor.execute(f"UPDATE users SET {', '.join(updates)} WHERE id = ?", tuple(params))
             conn.commit()
             return self.get_user_by_id(user_id)
 
@@ -947,6 +986,7 @@ class Database:
             plan=row['plan'] or 'free',
             monthly_exam_count=int(row['monthly_exam_count'] or 0),
             institution=row['institution'] or '',
+            phone=row['phone'] if 'phone' in row.keys() and row['phone'] else '',
             created_at=row['created_at'],
             last_login=row['last_login'] or ''
         )

@@ -65,59 +65,59 @@
 <body class="bg-surface-canvas font-sans text-slate-800 antialiased min-h-screen flex flex-col selection:bg-indigo-600 selection:text-white">
 
     <!-- ==================== TOP NAVIGATION BAR (Single Unified Header) ==================== -->
-    <header class="sticky top-0 z-50 bg-white border-b border-slate-100 shadow-xs transition-all">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-20">
+    <header class="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.03)] transition-all">
+        <div class="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-10 flex items-center justify-between h-[72px]">
             
             <!-- Left: Brand Logo Lockup & 5 Core Nav Links -->
             <div class="flex items-center gap-6 lg:gap-8 xl:gap-10">
                 <!-- Brand Logo (StudyGeneratorExam) -->
                 <div class="flex items-center gap-3 cursor-pointer group select-none flex-shrink-0" onclick="appState.navigateTo('dashboard')" title="StudyGeneratorExam">
-                    <img src="assets/icon.png" alt="StudyGeneratorExam Icon" class="w-10 h-10 rounded-xl object-contain ring-1 ring-slate-200/90 bg-white p-0.5 shadow-2xs group-hover:scale-105 transition-transform"/>
-                    <span class="text-xl font-extrabold tracking-tight text-slate-900 group-hover:text-[#654BFF] transition-colors whitespace-nowrap">
-                        Study<span class="text-[#654BFF]">Generator</span> Exam
+                    <img src="assets/icon.png" alt="StudyGeneratorExam Logo" class="h-9 w-9 object-contain group-hover:scale-105 transition-transform"/>
+                    <span class="text-xl sm:text-[22px] font-bold tracking-tight text-slate-900 group-hover:text-[#675BFF] transition-colors whitespace-nowrap">
+                        Study<span class="text-[#675BFF]">Generator</span> Exam
                     </span>
                 </div>
 
                 <!-- 5 Navigation Links: Dashboard, Create Exam, Question Bank, Take Exam, Export Hub -->
-                <nav class="hidden lg:flex items-center gap-5 xl:gap-7">
-                    <button class="nav-btn font-semibold text-[15px] text-[#654BFF] transition-colors cursor-pointer select-none whitespace-nowrap" data-view="dashboard" onclick="appState.navigateTo('dashboard')">
+                <nav class="hidden lg:flex items-center gap-6 xl:gap-8 ml-1 sm:ml-3">
+                    <button class="nav-btn font-semibold text-[15px] text-[#675BFF] hover:text-[#5B4EFF] transition-colors cursor-pointer select-none whitespace-nowrap" data-view="dashboard" onclick="appState.navigateTo('dashboard')">
                         <span id="nav-label-dashboard">Dashboard</span>
                     </button>
-                    <button class="nav-btn font-medium text-[15px] text-slate-700 hover:text-[#654BFF] transition-colors cursor-pointer select-none whitespace-nowrap" data-view="wizard" onclick="appState.navigateTo('wizard')">
+                    <button class="nav-btn font-medium text-[15px] text-slate-700 hover:text-slate-900 transition-colors cursor-pointer select-none whitespace-nowrap" data-view="wizard" onclick="appState.navigateTo('wizard')">
                         <span id="nav-label-wizard">Create Exam</span>
                     </button>
-                    <button class="nav-btn font-medium text-[15px] text-slate-700 hover:text-[#654BFF] transition-colors cursor-pointer select-none whitespace-nowrap" data-view="editor" onclick="appState.navigateTo('editor')">
+                    <button class="nav-btn font-medium text-[15px] text-slate-700 hover:text-slate-900 transition-colors cursor-pointer select-none whitespace-nowrap" data-view="editor" onclick="appState.navigateTo('editor')">
                         <span id="nav-label-editor">Question Bank</span>
                     </button>
-                    <button class="nav-btn font-medium text-[15px] text-slate-700 hover:text-[#654BFF] transition-colors cursor-pointer select-none whitespace-nowrap" data-view="player" onclick="appState.navigateTo('player')">
+                    <button class="nav-btn font-medium text-[15px] text-slate-700 hover:text-slate-900 transition-colors cursor-pointer select-none whitespace-nowrap" data-view="player" onclick="appState.navigateTo('player')">
                         <span id="nav-label-player">Take Exam</span>
                     </button>
-                    <button class="nav-btn font-medium text-[15px] text-slate-700 hover:text-[#654BFF] transition-colors cursor-pointer select-none whitespace-nowrap" data-view="export" onclick="appState.navigateTo('export')">
+                    <button class="nav-btn font-medium text-[15px] text-slate-700 hover:text-slate-900 transition-colors cursor-pointer select-none whitespace-nowrap" data-view="export" onclick="appState.navigateTo('export')">
                         <span id="nav-label-export">Export Hub</span>
                     </button>
                 </nav>
             </div>
 
             <!-- Right: Log in, Get a Demo, Language & Setting -->
-            <div class="flex items-center gap-2.5 sm:gap-3.5">
+            <div class="flex items-center gap-2.5 sm:gap-3.5 flex-shrink-0">
                 <!-- Logged Out Auth Buttons -->
-                <div id="auth-logged-out-actions" class="flex items-center gap-2 sm:gap-3">
+                <div id="auth-logged-out-actions" class="flex items-center gap-2.5 sm:gap-3">
                     <!-- Blue Gradient Pill: Log in -->
-                    <button type="button" onclick="appState.openAuthModal('login')" class="rounded-full px-5 sm:px-6 py-2.5 text-sm sm:text-[15px] font-semibold text-white shadow-xs hover:opacity-95 transition-all active:scale-95 bg-gradient-to-r from-[#6877FF] to-[#654BFF] cursor-pointer whitespace-nowrap">
+                    <button type="button" onclick="appState.openAuthModal('login')" class="rounded-full px-5 sm:px-6 py-2.5 text-sm sm:text-[15px] font-semibold text-white shadow-xs hover:opacity-95 hover:shadow-md transition-all active:scale-95 cursor-pointer whitespace-nowrap" style="background: linear-gradient(90deg, #6A87FF 0%, #675BFF 100%);">
                         <span id="btn-label-login">Log in</span>
                     </button>
 
                     <!-- Purple Gradient Pill: Get a Demo -->
-                    <button type="button" onclick="appState.openDemoModal()" class="rounded-full px-4 sm:px-5 py-2.5 text-sm sm:text-[15px] font-semibold text-white shadow-xs hover:opacity-95 transition-all active:scale-95 bg-gradient-to-r from-[#B75EFF] to-[#A93FFF] cursor-pointer whitespace-nowrap">
+                    <button type="button" onclick="appState.openDemoModal()" class="rounded-full px-4 sm:px-5 py-2.5 text-sm sm:text-[15px] font-semibold text-white shadow-xs hover:opacity-95 hover:shadow-md transition-all active:scale-95 cursor-pointer whitespace-nowrap" style="background: linear-gradient(90deg, #BA64FF 0%, #AC46FF 100%);">
                         <span id="btn-label-demo">Get a Demo</span>
                     </button>
                 </div>
 
                 <!-- Language Switcher: Globe icon + en / hi toggle -->
                 <div class="relative">
-                    <button id="lang-switcher-btn" onclick="appState.toggleLanguageMenu()" class="flex items-center gap-1.5 py-1.5 px-2 rounded-lg text-slate-800 hover:text-[#654BFF] transition-colors cursor-pointer select-none" title="Change Language / भाषा बदलें">
-                        <i data-lucide="globe" class="w-5 h-5 text-slate-800"></i>
-                        <span id="current-lang-code" class="text-sm sm:text-[15px] font-medium text-slate-800">en</span>
+                    <button id="lang-switcher-btn" onclick="appState.toggleLanguageMenu()" class="flex items-center gap-1.5 py-1.5 px-2 rounded-lg text-slate-700 hover:text-slate-900 transition-colors cursor-pointer select-none" title="Change Language / भाषा बदलें">
+                        <i data-lucide="globe" class="w-5 h-5 text-slate-700 stroke-[1.75]"></i>
+                        <span id="current-lang-code" class="text-sm sm:text-[15px] font-medium text-slate-700">en</span>
                     </button>
 
                     <!-- Language dropdown -->
@@ -134,19 +134,24 @@
                 </div>
 
                 <!-- Setting Icon Button -->
-                <button aria-label="Settings" onclick="appState.openSettings()" class="p-2 sm:p-2.5 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200/80 transition-all active:scale-95 flex items-center justify-center cursor-pointer" type="button" title="AI & System Settings">
-                    <i data-lucide="settings" class="w-5 h-5 text-slate-700"></i>
+                <button aria-label="Settings" onclick="appState.openSettings()" class="p-2 sm:p-2.5 rounded-full text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all active:scale-95 flex items-center justify-center cursor-pointer" type="button" title="AI & System Settings">
+                    <i data-lucide="settings" class="w-5 h-5 text-slate-700 stroke-[1.75]"></i>
+                </button>
+
+                <!-- Mobile Menu Button (lg:hidden) -->
+                <button id="mobile-menu-toggle" onclick="appState.toggleMobileMenu()" class="lg:hidden p-2 rounded-full text-slate-700 hover:bg-slate-100 transition-colors" aria-label="Toggle navigation menu">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
                 </button>
 
                 <!-- User Profile Container & Dropdown (shown when logged in) -->
                 <div id="user-profile-container" class="relative hidden">
-                    <button id="user-profile-btn" onclick="appState.toggleUserMenu()" class="flex items-center gap-2.5 p-1.5 pl-2 pr-3 rounded-full hover:bg-slate-100 border border-slate-200/80 transition-all focus:outline-none cursor-pointer">
-                        <div id="user-avatar-initials" class="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center ring-2 ring-indigo-500/20">
+                    <button id="user-profile-btn" onclick="appState.toggleUserMenu()" class="flex items-center gap-2.5 p-1.5 pl-2.5 pr-3.5 rounded-full hover:bg-slate-100 border border-slate-200/80 transition-all focus:outline-none cursor-pointer" title="User Account">
+                        <div id="user-avatar-initials" class="w-8 h-8 rounded-full bg-gradient-to-r from-[#6A87FF] to-[#675BFF] text-white font-bold text-xs flex items-center justify-center shadow-xs">
                             U
                         </div>
                         <div class="hidden sm:flex flex-col text-left">
-                            <span id="user-display-name" class="text-sm font-semibold text-slate-800 leading-tight">Educator</span>
-                            <span id="user-role-label" class="text-[11px] text-slate-500 leading-tight">Instructor</span>
+                            <span class="text-[11px] text-slate-500 font-medium leading-tight">Welcome back,</span>
+                            <span id="user-display-name" class="text-sm font-bold text-slate-900 leading-tight">Educator</span>
                         </div>
                         <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i>
                     </button>
@@ -156,6 +161,7 @@
                         <div class="px-4 py-2.5 border-b border-slate-100">
                             <p class="text-sm font-bold text-slate-900" id="menu-user-name">User</p>
                             <p class="text-xs text-slate-500 truncate mt-0.5" id="menu-user-email">user@example.com</p>
+                            <p class="text-xs text-slate-500 truncate mt-0.5 hidden" id="menu-user-phone"></p>
                             <div class="mt-2 flex items-center gap-1.5">
                                 <span class="inline-block text-xs font-semibold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100" id="menu-user-plan">Free Plan</span>
                                 <span id="menu-verified-badge" class="text-xs text-emerald-600 font-medium flex items-center gap-1">
@@ -707,23 +713,27 @@
                         <i data-lucide="book" class="w-6 h-6 text-slate-400"></i>
                     </div>
 
-                    <!-- Source Selector Segmented Tabs -->
-                    <div class="grid grid-cols-3 gap-1.5 bg-slate-100 p-1.5 rounded-xl border border-slate-200/80">
-                        <button id="tab-btn-pdf" onclick="appState.switchWizardTab('pdf')" class="wizard-tab py-2.5 px-3 rounded-lg bg-white text-indigo-600 font-bold shadow-xs text-sm flex items-center justify-center gap-2 transition-all">
+                    <!-- Source Selector Segmented Tabs (4 Sources: PDF/DOCX/TXT, Topic, Paste, Web Link) -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 bg-slate-100 p-1.5 rounded-xl border border-slate-200/80">
+                        <button id="tab-btn-pdf" onclick="appState.switchWizardTab('pdf')" class="wizard-tab py-2 px-2.5 rounded-lg bg-white text-indigo-600 font-bold shadow-xs text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all">
                             <i data-lucide="file-text" class="w-4 h-4"></i>
                             <span>Upload File</span>
                         </button>
-                        <button id="tab-btn-topic" onclick="appState.switchWizardTab('topic')" class="wizard-tab py-2.5 px-3 rounded-lg text-slate-600 hover:text-slate-900 font-semibold text-sm flex items-center justify-center gap-2 transition-all">
+                        <button id="tab-btn-topic" onclick="appState.switchWizardTab('topic')" class="wizard-tab py-2 px-2.5 rounded-lg text-slate-600 hover:text-slate-900 font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all">
                             <i data-lucide="brain" class="w-4 h-4"></i>
                             <span>Topic / Prompt</span>
                         </button>
-                        <button id="tab-btn-text" onclick="appState.switchWizardTab('text')" class="wizard-tab py-2.5 px-3 rounded-lg text-slate-600 hover:text-slate-900 font-semibold text-sm flex items-center justify-center gap-2 transition-all">
+                        <button id="tab-btn-text" onclick="appState.switchWizardTab('text')" class="wizard-tab py-2 px-2.5 rounded-lg text-slate-600 hover:text-slate-900 font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all">
                             <i data-lucide="clipboard-paste" class="w-4 h-4"></i>
                             <span>Paste Text</span>
                         </button>
+                        <button id="tab-btn-url" onclick="appState.switchWizardTab('url')" class="wizard-tab py-2 px-2.5 rounded-lg text-slate-600 hover:text-slate-900 font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all">
+                            <i data-lucide="globe" class="w-4 h-4"></i>
+                            <span>Web Link</span>
+                        </button>
                     </div>
 
-                    <!-- Panel 1: PDF Upload -->
+                    <!-- Panel 1: PDF/DOCX/TXT Upload -->
                     <div id="panel-source-pdf" class="space-y-4">
                         <div id="pdf-dropzone" class="border-2 border-dashed border-slate-200 hover:border-indigo-500 rounded-2xl p-10 flex flex-col items-center justify-center bg-slate-50/50 hover:bg-slate-50 transition-all cursor-pointer text-center">
                             <input type="file" id="pdf-file-input" accept=".pdf,.docx,.txt" class="hidden" onchange="appState.handleFileSelect(event)"/>
@@ -793,6 +803,51 @@
                         </div>
                         <textarea id="pasted-text-input" rows="8" oninput="appState.updatePastedWordCount(this.value)" class="w-full px-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="Paste your course notes, textbook excerpts, or review sheets here (up to 20,000 words)..."></textarea>
                     </div>
+
+                    <!-- Panel 4: Web Link / URL Scraper -->
+                    <div id="panel-source-url" class="hidden space-y-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-800 mb-1.5" for="url-source-input">Article or Documentation Web Link</label>
+                            <div class="flex gap-2">
+                                <div class="relative flex-1">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <i data-lucide="link" class="w-4 h-4 text-slate-400"></i>
+                                    </div>
+                                    <input id="url-source-input" type="url" class="w-full pl-9 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="https://en.wikipedia.org/wiki/Operating_system"/>
+                                </div>
+                                <button type="button" id="btn-fetch-url" onclick="appState.fetchUrlContent()" class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition-all flex items-center gap-2 cursor-pointer shadow-xs whitespace-nowrap">
+                                    <i data-lucide="download" class="w-4 h-4"></i>
+                                    <span>Fetch</span>
+                                </button>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-1.5">Paste any public educational article, Wikipedia page, or reference documentation link.</p>
+                        </div>
+
+                        <!-- Scraped Link Summary Card -->
+                        <div id="url-fetched-card" class="hidden border border-indigo-200/80 bg-indigo-50/30 rounded-2xl p-5 shadow-xs">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="flex items-start gap-3.5">
+                                    <div class="w-12 h-12 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0">
+                                        <i data-lucide="globe" class="w-6 h-6"></i>
+                                    </div>
+                                    <div>
+                                        <div class="flex items-center gap-2">
+                                            <h3 class="text-sm font-bold text-slate-900 truncate max-w-xs" id="url-title-display">Article Title</h3>
+                                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
+                                                <i data-lucide="check" class="w-3 h-3"></i> Extracted
+                                            </span>
+                                        </div>
+                                        <p class="text-xs text-slate-500 mt-0.5" id="url-words-display">0 words parsed</p>
+                                    </div>
+                                </div>
+                                <button onclick="appState.removeScrapedUrl()" class="text-sm font-semibold text-rose-600 hover:text-rose-800">Clear</button>
+                            </div>
+                            <!-- Excerpt preview -->
+                            <div class="mt-3.5 bg-white border border-slate-200/80 rounded-xl p-3.5 text-xs text-slate-600 italic leading-relaxed max-h-28 overflow-y-auto" id="url-excerpt-display">
+                                Extracted article text will appear here.
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Right Column: Exam Configuration (6 cols) -->
@@ -812,6 +867,37 @@
                     <div>
                         <label class="block text-sm font-semibold text-slate-800 mb-1.5" for="exam-title-input">Exam Title</label>
                         <input id="exam-title-input" type="text" class="w-full px-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="e.g., Midterm Assessment: Operating Systems Concepts"/>
+                    </div>
+
+                    <!-- 2-Column: Subject & Language -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-800 mb-1.5" for="exam-subject-select">Subject / Discipline</label>
+                            <select id="exam-subject-select" class="w-full px-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
+                                <option value="General" selected>General Knowledge / Cross-Disciplinary</option>
+                                <option value="Computer Science">Computer Science & IT</option>
+                                <option value="Mathematics">Mathematics & Statistics</option>
+                                <option value="Medicine & Healthcare">Medicine & Healthcare</option>
+                                <option value="Business & Finance">Business, Finance & Economics</option>
+                                <option value="Engineering">Engineering & Technology</option>
+                                <option value="Natural Sciences">Physics, Chemistry & Biology</option>
+                                <option value="Law & Ethics">Law, Policy & Governance</option>
+                                <option value="Humanities">History, Philosophy & Literature</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-800 mb-1.5" for="exam-language-select">Assessment Language</label>
+                            <select id="exam-language-select" class="w-full px-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
+                                <option value="English" selected>English</option>
+                                <option value="Hindi">हिन्दी (Hindi)</option>
+                                <option value="Spanish">Español (Spanish)</option>
+                                <option value="French">Français (French)</option>
+                                <option value="German">Deutsch (German)</option>
+                                <option value="Chinese">中文 (Chinese)</option>
+                                <option value="Arabic">العربية (Arabic)</option>
+                                <option value="Portuguese">Português (Portuguese)</option>
+                            </select>
+                        </div>
                     </div>
 
                     <!-- 2-Column: Difficulty & Target Level -->
@@ -887,6 +973,26 @@
                             </div>
                         </div>
 
+                        <!-- Fill in the Blank Stepper -->
+                        <div class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200/80">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm font-bold text-slate-800">Fill in the Blank</span>
+                                    <span class="px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-600">Bloom L2-L3</span>
+                                </div>
+                                <p class="text-xs text-slate-500 mt-0.5">Cloze recall with keyword blank auto-matching</p>
+                            </div>
+                            <div class="flex items-center gap-2.5">
+                                <button onclick="appState.adjustQuestionCount('fill', -1)" type="button" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-sm">
+                                    <i data-lucide="minus" class="w-3.5 h-3.5"></i>
+                                </button>
+                                <span id="count-fill" class="w-7 text-center font-bold text-sm text-slate-900">1</span>
+                                <button onclick="appState.adjustQuestionCount('fill', 1)" type="button" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-sm">
+                                    <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                </button>
+                            </div>
+                        </div>
+
                         <!-- Short Answer Stepper -->
                         <div class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200/80">
                             <div>
@@ -900,7 +1006,7 @@
                                 <button onclick="appState.adjustQuestionCount('short', -1)" type="button" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-sm">
                                     <i data-lucide="minus" class="w-3.5 h-3.5"></i>
                                 </button>
-                                <span id="count-short" class="w-7 text-center font-bold text-sm text-slate-900">2</span>
+                                <span id="count-short" class="w-7 text-center font-bold text-sm text-slate-900">1</span>
                                 <button onclick="appState.adjustQuestionCount('short', 1)" type="button" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-sm">
                                     <i data-lucide="plus" class="w-3.5 h-3.5"></i>
                                 </button>
@@ -1502,10 +1608,17 @@
                                     <input id="prof-input-institution" type="text" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="e.g. Stanford University"/>
                                 </div>
                             </div>
-                            <div>
-                                <label class="block text-sm font-semibold text-slate-700 mb-1.5" for="prof-input-email">Email Address</label>
-                                <input id="prof-input-email" type="email" disabled class="w-full px-4 py-3 text-sm bg-slate-100 border border-slate-200 rounded-xl text-slate-500 cursor-not-allowed"/>
-                                <p class="text-xs text-slate-400 mt-1">Email address cannot be changed directly.</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5" for="prof-input-email">Email Address</label>
+                                    <input id="prof-input-email" type="email" disabled class="w-full px-4 py-3 text-sm bg-slate-100 border border-slate-200 rounded-xl text-slate-500 cursor-not-allowed"/>
+                                    <p class="text-xs text-slate-400 mt-1">Email address cannot be changed directly.</p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1.5" for="prof-input-phone">Mobile Number</label>
+                                    <input id="prof-input-phone" type="tel" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="+91 98765 43210"/>
+                                    <p class="text-xs text-slate-400 mt-1">Used for signing in and account recovery.</p>
+                                </div>
                             </div>
                             <div class="flex justify-end pt-2">
                                 <button type="submit" class="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-xs transition-all active:scale-95 flex items-center gap-2">
@@ -1678,6 +1791,63 @@
         </div>
     </div>
 
+    <!-- Modal: AI Generation Multi-Step Animated Progress Modal -->
+    <div id="modal-generation-progress" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-3xl border border-slate-200 max-w-md w-full p-8 shadow-2xl space-y-6 text-center animate-scaleIn">
+            <div class="relative mx-auto w-20 h-20">
+                <div class="absolute inset-0 rounded-full border-4 border-indigo-100 animate-pulse"></div>
+                <div class="absolute inset-0 rounded-full border-4 border-transparent border-t-indigo-600 border-r-purple-600 animate-spin"></div>
+                <div class="absolute inset-2 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
+                    <i data-lucide="sparkles" class="w-7 h-7 animate-bounce"></i>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="text-xl font-extrabold text-slate-900" id="gen-progress-title">Generating Your Assessment</h3>
+                <p class="text-xs text-slate-500 mt-1" id="gen-progress-subtitle">Synthesizing source context and crafting calibrated test items...</p>
+            </div>
+
+            <!-- Animated Progress Bar -->
+            <div class="space-y-1.5">
+                <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden p-0.5 border border-slate-200/60">
+                    <div id="gen-progress-bar" class="h-full rounded-full transition-all duration-500 ease-out" style="width: 25%; background: linear-gradient(90deg, #6A87FF 0%, #BA64FF 100%);"></div>
+                </div>
+                <div class="flex justify-between text-[11px] font-semibold text-slate-500">
+                    <span id="gen-progress-step-label">Step 1 of 4</span>
+                    <span id="gen-progress-percent">25%</span>
+                </div>
+            </div>
+
+            <!-- 4 Visual Steps Pipeline -->
+            <div class="space-y-2.5 text-left bg-slate-50 p-4 rounded-2xl border border-slate-200/70 text-xs">
+                <div id="gen-step-1" class="flex items-center gap-3 font-semibold text-indigo-600">
+                    <div class="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0" id="gen-step-icon-1">
+                        <i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i>
+                    </div>
+                    <span>Ingesting & normalizing source content</span>
+                </div>
+                <div id="gen-step-2" class="flex items-center gap-3 text-slate-400">
+                    <div class="w-5 h-5 rounded-full bg-slate-200 text-slate-400 flex items-center justify-center flex-shrink-0" id="gen-step-icon-2">
+                        <i data-lucide="circle" class="w-3.5 h-3.5"></i>
+                    </div>
+                    <span>Calibrating domain parameters & taxonomy</span>
+                </div>
+                <div id="gen-step-3" class="flex items-center gap-3 text-slate-400">
+                    <div class="w-5 h-5 rounded-full bg-slate-200 text-slate-400 flex items-center justify-center flex-shrink-0" id="gen-step-icon-3">
+                        <i data-lucide="circle" class="w-3.5 h-3.5"></i>
+                    </div>
+                    <span>Drafting items, options & clozes</span>
+                </div>
+                <div id="gen-step-4" class="flex items-center gap-3 text-slate-400">
+                    <div class="w-5 h-5 rounded-full bg-slate-200 text-slate-400 flex items-center justify-center flex-shrink-0" id="gen-step-icon-4">
+                        <i data-lucide="circle" class="w-3.5 h-3.5"></i>
+                    </div>
+                    <span>Verifying rubrics & pedagogical justifications</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal 2: AI Single Question Regenerator -->
     <div id="modal-regenerate" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
         <div class="bg-white rounded-2xl border border-slate-200 max-w-lg w-full p-6 shadow-xl space-y-4">
@@ -1734,6 +1904,7 @@
                         <select id="new-q-type" onchange="appState.handleNewQuestionTypeChange(this.value)" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none">
                             <option value="mcq">Multiple Choice (MCQ)</option>
                             <option value="true_false">True / False</option>
+                            <option value="fill_blank">Fill in the Blank</option>
                             <option value="short_answer">Short Answer</option>
                             <option value="essay">Essay / Analytical</option>
                         </select>
@@ -1829,49 +2000,62 @@
     </div>
 
     <!-- Modal 5: Unified Authentication Modal (Sign In, Sign Up, Forgot & Reset Password) -->
-    <div id="modal-auth" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
-        <div class="bg-white rounded-3xl border border-slate-200 max-w-lg w-full p-7 sm:p-9 shadow-2xl space-y-6 animate-scaleIn">
+    <div id="modal-auth" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-3xl border border-slate-200/90 max-w-lg w-full p-6 sm:p-8 shadow-2xl space-y-6 animate-scaleIn">
             <!-- Modal Header -->
-            <div class="flex items-center justify-between">
+            <div class="flex items-center justify-between pb-1 border-b border-slate-100">
                 <div class="flex items-center gap-3">
-                    <img src="assets/icon.png" alt="StudyGeneratorExam" class="w-10 h-10 rounded-xl object-contain ring-1 ring-slate-200 p-0.5 bg-white"/>
+                    <img src="assets/icon.png" alt="StudyGeneratorExam Logo" class="w-10 h-10 object-contain"/>
                     <div>
-                        <h2 class="text-lg font-bold text-slate-900">Study<span class="text-indigo-600">Generator</span>Exam</h2>
-                        <p class="text-xs text-slate-500">AI Exam Generation & Assessment Platform</p>
+                        <h2 class="text-xl font-extrabold text-slate-900 tracking-tight">Study<span class="text-[#675BFF]">Generator</span> Exam</h2>
+                        <p class="text-xs text-slate-500 font-medium">AI Assessment & Examination Platform</p>
                     </div>
                 </div>
-                <button type="button" onclick="appState.closeAuthModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg">
+                <button type="button" onclick="appState.closeAuthModal()" class="text-slate-400 hover:text-slate-600 p-2 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer">
                     <i data-lucide="x" class="w-5 h-5"></i>
                 </button>
             </div>
 
             <!-- Tab Switcher (Login / Signup) -->
-            <div id="auth-tabs-header" class="grid grid-cols-2 gap-1.5 bg-slate-100 p-1.5 rounded-xl text-sm font-bold">
-                <button id="tab-auth-login" onclick="appState.switchAuthTab('login')" class="py-2.5 rounded-lg bg-white text-indigo-600 shadow-xs transition-all">Sign In</button>
-                <button id="tab-auth-signup" onclick="appState.switchAuthTab('signup')" class="py-2.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all">Create Account</button>
+            <div id="auth-tabs-header" class="grid grid-cols-2 gap-1.5 bg-slate-100 p-1.5 rounded-2xl text-sm font-bold">
+                <button id="tab-auth-login" onclick="appState.switchAuthTab('login')" class="py-2.5 rounded-xl bg-white text-[#675BFF] shadow-xs transition-all cursor-pointer">Sign In</button>
+                <button id="tab-auth-signup" onclick="appState.switchAuthTab('signup')" class="py-2.5 rounded-xl text-slate-600 hover:text-slate-900 transition-all cursor-pointer">Create Account</button>
             </div>
 
             <!-- TAB 1: LOGIN -->
             <div id="auth-panel-login" class="space-y-4">
                 <form onsubmit="appState.handleLogin(event)" class="space-y-4">
                     <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-1.5" for="login-email">Email Address</label>
-                        <input id="login-email" type="email" required placeholder="name@university.edu" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"/>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5" for="login-email">Email or Mobile Number</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                <i data-lucide="mail" class="w-4 h-4"></i>
+                            </div>
+                            <input id="login-email" type="text" required placeholder="name@university.edu or +91 98765 43210" class="w-full pl-10 pr-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"/>
+                        </div>
                     </div>
                     <div>
                         <div class="flex items-center justify-between mb-1.5">
-                            <label class="text-sm font-semibold text-slate-700" for="login-password">Password</label>
-                            <button type="button" onclick="appState.switchAuthTab('forgot')" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800">Forgot password?</button>
+                            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider" for="login-password">Password</label>
+                            <button type="button" onclick="appState.switchAuthTab('forgot')" class="text-xs font-semibold text-[#675BFF] hover:text-[#5B4EFF] cursor-pointer">Forgot password?</button>
                         </div>
-                        <input id="login-password" type="password" required placeholder="••••••••" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"/>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                <i data-lucide="lock" class="w-4 h-4"></i>
+                            </div>
+                            <input id="login-password" type="password" required placeholder="Enter your password" class="w-full pl-10 pr-11 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"/>
+                            <button type="button" onclick="appState.togglePasswordVisibility('login-password', 'login-eye-icon')" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer">
+                                <i data-lucide="eye" id="login-eye-icon" class="w-4 h-4"></i>
+                            </button>
+                        </div>
                     </div>
-                    <div class="flex items-center justify-between text-sm text-slate-600 pt-1">
-                        <label class="flex items-center gap-2 cursor-pointer select-none">
-                            <input id="login-remember" type="checkbox" checked class="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4"/>
-                            <span>Remember me</span>
+                    <div class="flex items-center justify-between text-sm text-slate-600 pt-0.5">
+                        <label class="flex items-center gap-2 cursor-pointer select-none text-xs font-medium text-slate-700">
+                            <input id="login-remember" type="checkbox" checked class="rounded text-[#675BFF] focus:ring-indigo-500 w-4 h-4"/>
+                            <span>Remember this device</span>
                         </label>
                     </div>
-                    <button id="btn-login-submit" type="submit" class="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-xs transition-all active:scale-95 flex items-center justify-center gap-2">
+                    <button id="btn-login-submit" type="submit" class="w-full py-3.5 rounded-full text-white font-bold text-sm shadow-md hover:shadow-lg hover:opacity-95 transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer" style="background: linear-gradient(90deg, #6A87FF 0%, #675BFF 100%);">
                         <span>Sign In</span>
                         <i data-lucide="arrow-right" class="w-4 h-4"></i>
                     </button>
@@ -1883,7 +2067,7 @@
                 </div>
 
                 <!-- Google Action -->
-                <button type="button" onclick="appState.loginWithGoogle()" class="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-50 text-slate-700 font-bold text-sm py-3 px-4 rounded-xl border border-slate-300 shadow-xs transition-all active:scale-[0.98]">
+                <button type="button" onclick="appState.loginWithGoogle()" class="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-50 text-slate-800 font-bold text-sm py-3 px-4 rounded-full border border-slate-200 shadow-xs transition-all active:scale-[0.98] cursor-pointer">
                     <svg class="w-4.5 h-4.5 flex-shrink-0" viewBox="0 0 24 24">
                         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                         <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -1894,47 +2078,107 @@
                 </button>
 
                 <!-- Quick Preset Selector for Testing -->
-                <div class="pt-2 text-xs text-slate-500 bg-slate-50 border border-slate-200/80 rounded-xl p-3 space-y-2">
-                    <p class="font-bold text-slate-700">Quick Demo Accounts:</p>
+                <div class="pt-2 text-xs text-slate-500 bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 space-y-2">
+                    <p class="font-bold text-slate-700 flex items-center gap-1.5">
+                        <i data-lucide="key" class="w-3.5 h-3.5 text-indigo-600"></i>
+                        <span>Instant Demo Accounts:</span>
+                    </p>
                     <div class="flex flex-wrap gap-2">
-                        <button type="button" onclick="appState.fillLoginPreset('educator@studygeneratorexam.com', 'EducatorPass123!')" class="px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-indigo-300 text-indigo-700 font-semibold text-xs transition-colors">
+                        <button type="button" onclick="appState.fillLoginPreset('educator@studygeneratorexam.com', 'EducatorPass123!')" class="px-3.5 py-1.5 rounded-full bg-white border border-slate-200 hover:border-indigo-300 text-[#675BFF] font-semibold text-xs transition-colors cursor-pointer shadow-2xs">
                             Educator Demo
                         </button>
-                        <button type="button" onclick="appState.fillLoginPreset('admin@studygeneratorexam.com', 'AdminPass123!')" class="px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-indigo-300 text-slate-700 font-semibold text-xs transition-colors">
+                        <button type="button" onclick="appState.fillLoginPreset('admin@studygeneratorexam.com', 'AdminPass123!')" class="px-3.5 py-1.5 rounded-full bg-white border border-slate-200 hover:border-indigo-300 text-slate-700 font-semibold text-xs transition-colors cursor-pointer shadow-2xs">
                             Admin Demo
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- TAB 2: SIGN UP -->
+            <!-- TAB 2: SIGN UP (with Email & Mobile No.) -->
             <div id="auth-panel-signup" class="space-y-4 hidden">
                 <form onsubmit="appState.handleSignup(event)" class="space-y-3.5">
                     <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-1.5" for="signup-name">Full Name</label>
-                        <input id="signup-name" type="text" required placeholder="e.g. Prof. Alex Morgan" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500"/>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5" for="signup-name">Full Name</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                <i data-lucide="user" class="w-4 h-4"></i>
+                            </div>
+                            <input id="signup-name" type="text" required placeholder="e.g. Prof. Alex Morgan" class="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"/>
+                        </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-1.5" for="signup-email">Email Address</label>
-                        <input id="signup-email" type="email" required placeholder="name@university.edu" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500"/>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5" for="signup-email">Email Address</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                <i data-lucide="mail" class="w-4 h-4"></i>
+                            </div>
+                            <input id="signup-email" type="email" required placeholder="name@university.edu" class="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"/>
+                        </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-1.5" for="signup-institution">University / Department (Optional)</label>
-                        <input id="signup-institution" type="text" placeholder="e.g. Stanford University" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500"/>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5" for="signup-phone">Mobile Number</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                <i data-lucide="phone" class="w-4 h-4"></i>
+                            </div>
+                            <input id="signup-phone" type="tel" placeholder="+91 98765 43210" class="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"/>
+                        </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-1.5" for="signup-password">Password</label>
-                        <input id="signup-password" type="password" required minlength="8" placeholder="At least 8 chars (letters + numbers)" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500"/>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5" for="signup-institution">University / Department (Optional)</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                <i data-lucide="building" class="w-4 h-4"></i>
+                            </div>
+                            <input id="signup-institution" type="text" placeholder="e.g. Stanford University" class="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"/>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-1.5" for="signup-confirm-password">Confirm Password</label>
-                        <input id="signup-confirm-password" type="password" required minlength="8" placeholder="Repeat password" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500"/>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5" for="signup-password">Password</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                    <i data-lucide="lock" class="w-3.5 h-3.5"></i>
+                                </div>
+                                <input id="signup-password" type="password" required minlength="8" placeholder="Min. 8 chars" class="w-full pl-8 pr-9 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"/>
+                                <button type="button" onclick="appState.togglePasswordVisibility('signup-password', 'signup-eye-1')" class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer">
+                                    <i data-lucide="eye" id="signup-eye-1" class="w-3.5 h-3.5"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5" for="signup-confirm-password">Confirm Password</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                    <i data-lucide="lock" class="w-3.5 h-3.5"></i>
+                                </div>
+                                <input id="signup-confirm-password" type="password" required minlength="8" placeholder="Repeat" class="w-full pl-8 pr-9 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"/>
+                                <button type="button" onclick="appState.togglePasswordVisibility('signup-confirm-password', 'signup-eye-2')" class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer">
+                                    <i data-lucide="eye" id="signup-eye-2" class="w-3.5 h-3.5"></i>
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <button id="btn-signup-submit" type="submit" class="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-xs transition-all active:scale-95 flex items-center justify-center gap-2">
+                    <button id="btn-signup-submit" type="submit" class="w-full py-3.5 rounded-full text-white font-bold text-sm shadow-md hover:shadow-lg hover:opacity-95 transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer" style="background: linear-gradient(90deg, #BA64FF 0%, #AC46FF 100%);">
                         <span>Create Account</span>
                         <i data-lucide="user-plus" class="w-4 h-4"></i>
                     </button>
                 </form>
+
+                <!-- Google Signup -->
+                <div class="relative flex items-center justify-center py-0.5">
+                    <div class="border-t border-slate-200 w-full"></div>
+                    <span class="bg-white px-3 text-xs font-semibold text-slate-400 absolute">or</span>
+                </div>
+                <button type="button" onclick="appState.loginWithGoogle()" class="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-50 text-slate-800 font-bold text-sm py-2.5 px-4 rounded-full border border-slate-200 shadow-xs transition-all active:scale-[0.98] cursor-pointer">
+                    <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                    </svg>
+                    <span>Sign up with Google</span>
+                </button>
             </div>
 
             <!-- TAB 3: FORGOT PASSWORD -->
@@ -1944,14 +2188,19 @@
                 </div>
                 <form onsubmit="appState.handleForgotPassword(event)" class="space-y-4">
                     <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-1.5" for="forgot-email">Account Email</label>
-                        <input id="forgot-email" type="email" required placeholder="name@university.edu" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500"/>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5" for="forgot-email">Account Email</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                <i data-lucide="mail" class="w-4 h-4"></i>
+                            </div>
+                            <input id="forgot-email" type="email" required placeholder="name@university.edu" class="w-full pl-10 pr-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-indigo-500"/>
+                        </div>
                     </div>
-                    <button type="submit" class="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-xs transition-all active:scale-95">
+                    <button type="submit" class="w-full py-3.5 rounded-full text-white font-bold text-sm shadow-md transition-all active:scale-95 cursor-pointer" style="background: linear-gradient(90deg, #6A87FF 0%, #675BFF 100%);">
                         Send Reset Token
                     </button>
                     <div class="text-center pt-2">
-                        <button type="button" onclick="appState.switchAuthTab('login')" class="text-sm text-indigo-600 font-semibold hover:underline">
+                        <button type="button" onclick="appState.switchAuthTab('login')" class="text-sm text-[#675BFF] font-semibold hover:underline cursor-pointer">
                             Back to Sign In
                         </button>
                     </div>
@@ -1965,14 +2214,14 @@
                 </div>
                 <form onsubmit="appState.handleResetPassword(event)" class="space-y-4">
                     <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-1.5" for="reset-token-input">Reset Token</label>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5" for="reset-token-input">Reset Token</label>
                         <input id="reset-token-input" type="text" required placeholder="Token from email" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-mono focus:outline-none focus:border-indigo-500"/>
                     </div>
                     <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-1.5" for="reset-new-password">New Password</label>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5" for="reset-new-password">New Password</label>
                         <input id="reset-new-password" type="password" required minlength="8" placeholder="Min. 8 chars (letters + numbers)" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500"/>
                     </div>
-                    <button type="submit" class="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-xs transition-all active:scale-95">
+                    <button type="submit" class="w-full py-3.5 rounded-full text-white font-bold text-sm shadow-md transition-all active:scale-95 cursor-pointer" style="background: linear-gradient(90deg, #6A87FF 0%, #675BFF 100%);">
                         Set New Password
                     </button>
                 </form>

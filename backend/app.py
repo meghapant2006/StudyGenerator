@@ -141,6 +141,7 @@ def auth_signup():
     password = data.get('password', '')
     name = data.get('name', '').strip()
     institution = data.get('institution', '').strip()
+    phone = data.get('phone', data.get('mobile', '')).strip()
 
     # Input validation
     valid, err_msg = AuthService.validate_signup_input(email, password, name)
@@ -166,6 +167,7 @@ def auth_signup():
             is_verified=False,
             verification_token=verif_token,
             institution=institution,
+            phone=phone,
             plan='free'
         )
 
@@ -193,16 +195,16 @@ def auth_login():
         return jsonify({'success': False, 'error': 'Too many failed login attempts. Please try again later.'}), 429
 
     data = request.get_json() or {}
-    email = data.get('email', '').strip().lower()
+    identifier = data.get('email', data.get('identifier', data.get('mobile', ''))).strip()
     password = data.get('password', '')
     remember_me = bool(data.get('remember_me', False))
 
-    if not email or not password:
-        return jsonify({'success': False, 'error': 'Email and password are required.'}), 400
+    if not identifier or not password:
+        return jsonify({'success': False, 'error': 'Email or mobile number, and password are required.'}), 400
 
-    user = db.get_user_by_email(email)
+    user = db.get_user_by_email_or_phone(identifier)
     if not user:
-        return jsonify({'success': False, 'error': 'Invalid email or password.'}), 401
+        return jsonify({'success': False, 'error': 'Invalid email/mobile number or password.'}), 401
 
     if not user.password_hash:
         return jsonify({
@@ -383,12 +385,13 @@ def auth_update_profile():
     data = request.get_json() or {}
     name = data.get('name', '').strip()
     institution = data.get('institution', '').strip()
+    phone = data.get('phone', data.get('mobile', '')).strip()
 
     if not name or len(name) < 2:
         return jsonify({'success': False, 'error': 'Full name must be at least 2 characters long.'}), 400
 
     user_id = g.current_user.id
-    updated_user = db.update_user_profile(user_id, name, institution)
+    updated_user = db.update_user_profile(user_id, name, institution, phone=phone)
     return jsonify({
         'success': True,
         'message': 'Profile updated successfully.',
@@ -784,6 +787,26 @@ def delete_exam(exam_id):
         })
     except Exception as e:
         logger.error(f"Failed to delete exam {exam_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/exam/<int:exam_id>/reorder', methods=['PUT'])
+@app.route('/api/exams/<int:exam_id>/reorder', methods=['PUT'])
+def reorder_exam_questions(exam_id):
+    """Reorder question sequence for an exam to persist new ordering"""
+    try:
+        data = request.get_json() or {}
+        question_ids = data.get('question_ids', [])
+        if not question_ids:
+            return jsonify({'error': 'question_ids array is required'}), 400
+        success = db.reorder_questions(exam_id, question_ids)
+        return jsonify({
+            'success': success,
+            'exam_id': exam_id,
+            'count': len(question_ids)
+        })
+    except Exception as e:
+        logger.error(f"Failed to reorder questions for exam {exam_id}: {e}")
         return jsonify({'error': str(e)}), 500
 
 
