@@ -8,12 +8,12 @@ Provides REST endpoints for:
 - Multi-format exports (Student & Teacher PDF/HTML, Word .docx, Moodle GIFT, Google Forms CSV, JSON)
 - Dashboard analytics and settings
 """
-from flask import Flask, request, jsonify, send_from_directory, Response
+from flask import Flask, request, jsonify, send_from_directory, Response, g
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from pathlib import Path
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 import os
 import io
@@ -31,12 +31,15 @@ from config import (
 from pdf_extractor import extract_pdf_text, PDFExtractor
 from ai_generator import AIQuestionGenerator
 from database import Database
-from models import PDFDocument, Exam, Question, Answer, ExamAttempt
+from models import PDFDocument, Exam, Question, Answer, ExamAttempt, User
 from export_service import ExportService
+from auth_service import (
+    AuthService, login_required, admin_required, get_token_from_request
+)
 
 # Initialize Flask app
 app = Flask(__name__, static_folder='../frontend', static_url_path='')
-CORS(app)
+CORS(app, supports_credentials=True)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -49,22 +52,44 @@ export_service = ExportService()
 # Global storage for extracted PDF content (in-memory cache)
 pdf_content_cache = {}
 
-# User sessions & authentication store
-active_users = {
-    "default_educator": {
-        "id": "usr_demo_101",
-        "name": "Prof. Alex Morgan",
-        "given_name": "Alex",
-        "email": "alex.morgan@university.edu",
-        "role": "Lead Instructor",
-        "picture": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80",
-        "institution": "Department of Computer Science",
-        "plan": "Institutional Pro",
-        "authenticated": True,
-        "auth_provider": "google"
-    }
-}
-current_session_user = active_users["default_educator"]
+
+def seed_default_accounts():
+    """Ensure default educator and admin test accounts exist"""
+    try:
+        # 1. Admin account
+        admin_user = db.get_user_by_email("admin@studygeneratorexam.com")
+        if not admin_user:
+            admin_hash = AuthService.hash_password("AdminPass123!")
+            db.create_user(
+                email="admin@studygeneratorexam.com",
+                password_hash=admin_hash,
+                name="System Administrator",
+                role="admin",
+                is_verified=True,
+                institution="StudyGeneratorExam HQ",
+                plan="institution"
+            )
+            logger.info("Created default admin: admin@studygeneratorexam.com / AdminPass123!")
+
+        # 2. Educator account
+        educator_user = db.get_user_by_email("educator@studygeneratorexam.com")
+        if not educator_user:
+            edu_hash = AuthService.hash_password("EducatorPass123!")
+            db.create_user(
+                email="educator@studygeneratorexam.com",
+                password_hash=edu_hash,
+                name="Prof. Alex Morgan",
+                role="user",
+                is_verified=True,
+                institution="Stanford University",
+                plan="pro"
+            )
+            logger.info("Created default educator: educator@studygeneratorexam.com / EducatorPass123!")
+    except Exception as e:
+        logger.warning(f"Default accounts seed error (non-fatal): {e}")
+
+# Seed default accounts on startup
+seed_default_accounts()
 
 
 def allowed_file(filename):
@@ -94,82 +119,346 @@ def health_check():
     """Health check & system info endpoint"""
     return jsonify({
         'status': 'ok',
-        'name': 'StudyWise AI Exam Generator API',
-        'version': '2.4.0',
-        'message': 'StudyWise Exam Generator API is running',
+        'name': 'StudyGeneratorExam API',
+        'version': '3.0.0',
+        'message': 'StudyGeneratorExam API is operational',
         'timestamp': datetime.now().isoformat()
     })
 
 
-# Authentication & User Session Routes
-@app.route('/api/auth/me', methods=['GET'])
-def get_current_user():
-    """Get currently authenticated user or guest state"""
-    global current_session_user
-    if current_session_user:
-        return jsonify({
+# =============================================================================
+# Authentication & User Session Routes (Full Phase 1 Implementation)
+# =============================================================================
+
+@app.route('/api/auth/signup', methods=['POST'])
+def auth_signup():
+    """Register a new user with email and bcrypt hashed password"""
+    if not AuthService.check_rate_limit('signup', max_attempts=15, window_seconds=600):
+        return jsonify({'success': False, 'error': 'Too many signup attempts. Please try again later.'}), 429
+
+    data = request.get_json() or {}
+    email = data.get('email', '').strip().lower()
+    password = data.get('password', '')
+    name = data.get('name', '').strip()
+    institution = data.get('institution', '').strip()
+
+    # Input validation
+    valid, err_msg = AuthService.validate_signup_input(email, password, name)
+    if not valid:
+        return jsonify({'success': False, 'error': err_msg}), 400
+
+    # Check duplicate email
+    existing_user = db.get_user_by_email(email)
+    if existing_user:
+        return jsonify({'success': False, 'error': 'An account with this email already exists.'}), 409
+
+    try:
+        # Hash password and generate verification token
+        hashed_password = AuthService.hash_password(password)
+        verif_token = AuthService.generate_random_token(32)
+
+        user = db.create_user(
+            email=email,
+            password_hash=hashed_password,
+            name=name,
+            role='user',
+            auth_provider='local',
+            is_verified=False,
+            verification_token=verif_token,
+            institution=institution,
+            plan='free'
+        )
+
+        # Issue JWT
+        token = AuthService.generate_token(user, remember_me=True)
+        response = jsonify({
             'success': True,
-            'authenticated': True,
-            'user': current_session_user
+            'message': 'Account created successfully! Please verify your email.',
+            'user': user.to_dict(),
+            'token': token,
+            'verification_token': verif_token
         })
-    return jsonify({
+        response.set_cookie('access_token', token, httponly=True, samesite='Lax', max_age=30*86400)
+        return response, 201
+
+    except Exception as e:
+        logger.error(f"Signup error: {e}")
+        return jsonify({'success': False, 'error': f'Failed to create account: {str(e)}'}), 500
+
+
+@app.route('/api/auth/login', methods=['POST'])
+def auth_login():
+    """Authenticate user with email and password, returning JWT and httpOnly cookie"""
+    if not AuthService.check_rate_limit('login', max_attempts=12, window_seconds=600):
+        return jsonify({'success': False, 'error': 'Too many failed login attempts. Please try again later.'}), 429
+
+    data = request.get_json() or {}
+    email = data.get('email', '').strip().lower()
+    password = data.get('password', '')
+    remember_me = bool(data.get('remember_me', False))
+
+    if not email or not password:
+        return jsonify({'success': False, 'error': 'Email and password are required.'}), 400
+
+    user = db.get_user_by_email(email)
+    if not user:
+        return jsonify({'success': False, 'error': 'Invalid email or password.'}), 401
+
+    if not user.password_hash:
+        return jsonify({
+            'success': False,
+            'error': 'This account was created via Google Sign-In. Please click Continue with Google.'
+        }), 400
+
+    if not AuthService.verify_password(password, user.password_hash):
+        return jsonify({'success': False, 'error': 'Invalid email or password.'}), 401
+
+    # Update last login
+    db.update_user_last_login(user.id)
+    token = AuthService.generate_token(user, remember_me=remember_me)
+
+    response = jsonify({
         'success': True,
-        'authenticated': False,
-        'user': None
+        'message': f'Welcome back, {user.name}!',
+        'user': user.to_dict(),
+        'token': token
     })
+    max_age = 30 * 86400 if remember_me else 86400
+    response.set_cookie('access_token', token, httponly=True, samesite='Lax', max_age=max_age)
+    return response
 
 
 @app.route('/api/auth/google', methods=['POST'])
-def google_auth():
-    """Handle Google Login authentication payload"""
-    global current_session_user
+def auth_google():
+    """Authenticate or provision user via Google identity"""
+    if not AuthService.check_rate_limit('google_auth', max_attempts=20, window_seconds=600):
+        return jsonify({'success': False, 'error': 'Too many requests. Please wait a moment.'}), 429
+
+    data = request.get_json() or {}
+    email = data.get('email', '').strip().lower()
+    name = data.get('name', 'Educator').strip()
+    google_id = data.get('id') or data.get('google_id') or ''
+    institution = data.get('institution', '').strip()
+
+    if not email:
+        return jsonify({'success': False, 'error': 'Google email is required.'}), 400
+
+    user = db.get_user_by_email(email)
+    if not user:
+        # Auto-provision new user via Google
+        user = db.create_user(
+            email=email,
+            password_hash=None,
+            name=name,
+            role='user',
+            auth_provider='google',
+            google_id=google_id,
+            is_verified=True,
+            institution=institution,
+            plan='free'
+        )
+    else:
+        # Update login & verify email if Google authenticated
+        db.update_user_last_login(user.id)
+        if not user.is_verified:
+            with db._get_connection() as conn:
+                conn.execute("UPDATE users SET is_verified = 1 WHERE id = ?", (user.id,))
+                conn.commit()
+            user = db.get_user_by_id(user.id)
+
+    token = AuthService.generate_token(user, remember_me=True)
+    response = jsonify({
+        'success': True,
+        'message': f'Signed in with Google as {user.name}',
+        'user': user.to_dict(),
+        'token': token
+    })
+    response.set_cookie('access_token', token, httponly=True, samesite='Lax', max_age=30*86400)
+    return response
+
+
+@app.route('/api/auth/verify-email', methods=['GET', 'POST'])
+def auth_verify_email():
+    """Confirm user email using verification token"""
+    token = request.args.get('token')
+    if not token and request.is_json:
+        token = request.get_json().get('token')
+
+    if not token:
+        return jsonify({'success': False, 'error': 'Verification token is required.'}), 400
+
+    user = db.verify_user_email(token.strip())
+    if not user:
+        return jsonify({'success': False, 'error': 'Invalid or expired verification token.'}), 400
+
+    return jsonify({
+        'success': True,
+        'message': 'Your email address has been successfully verified!',
+        'user': user.to_dict()
+    })
+
+
+@app.route('/api/auth/forgot-password', methods=['POST'])
+def auth_forgot_password():
+    """Generate time-limited password reset token for given email"""
+    if not AuthService.check_rate_limit('forgot_pwd', max_attempts=5, window_seconds=900):
+        return jsonify({'success': False, 'error': 'Too many password reset requests. Please wait 15 minutes.'}), 429
+
+    data = request.get_json() or {}
+    email = data.get('email', '').strip().lower()
+
+    if not email:
+        return jsonify({'success': False, 'error': 'Email address is required.'}), 400
+
+    user = db.get_user_by_email(email)
+    reset_token = None
+    if user and user.password_hash:
+        reset_token = AuthService.generate_random_token(32)
+        expires_iso = (datetime.now() + timedelta(hours=1)).isoformat()
+        db.set_reset_token(email, reset_token, expires_iso)
+        logger.info(f"Password reset token generated for {email}: {reset_token}")
+
+    return jsonify({
+        'success': True,
+        'message': 'If an account exists with this email, password reset instructions have been generated.',
+        'reset_token': reset_token
+    })
+
+
+@app.route('/api/auth/reset-password', methods=['POST'])
+def auth_reset_password():
+    """Reset password using valid time-limited reset token"""
+    data = request.get_json() or {}
+    token = data.get('token', '').strip()
+    new_password = data.get('new_password', '')
+
+    if not token or not new_password:
+        return jsonify({'success': False, 'error': 'Reset token and new password are required.'}), 400
+
+    if len(new_password) < 8 or not (any(c.isalpha() for c in new_password) and any(c.isdigit() for c in new_password)):
+        return jsonify({'success': False, 'error': 'New password must be at least 8 characters with letters and numbers.'}), 400
+
+    user = db.get_user_by_reset_token(token)
+    if not user:
+        return jsonify({'success': False, 'error': 'Invalid or expired password reset link.'}), 400
+
     try:
-        data = request.get_json() or {}
-        email = data.get('email', 'educator@example.com').strip()
-        name = data.get('name', 'Educator').strip()
-        given_name = data.get('given_name') or name.split(' ')[0]
-        picture = data.get('picture') or "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80"
-        institution = data.get('institution', 'Academic Department')
-        role = data.get('role', 'Instructor')
-
-        user_id = data.get('id') or f"usr_g_{uuid.uuid4().hex[:8]}"
-
-        user = {
-            'id': user_id,
-            'name': name,
-            'given_name': given_name,
-            'email': email,
-            'role': role,
-            'picture': picture,
-            'institution': institution,
-            'plan': 'Institutional Pro',
-            'authenticated': True,
-            'auth_provider': 'google',
-            'last_login': datetime.now().isoformat()
-        }
-
-        active_users[user_id] = user
-        current_session_user = user
-
-        return jsonify({
-            'success': True,
-            'message': f'Welcome back, {name}!',
-            'user': user
-        })
+        new_hash = AuthService.hash_password(new_password)
+        success = db.reset_password(token, new_hash)
+        if success:
+            return jsonify({'success': True, 'message': 'Password has been reset successfully. You can now sign in.'})
+        return jsonify({'success': False, 'error': 'Failed to reset password.'}), 500
     except Exception as e:
-        logger.error(f"Google auth error: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 400
+        logger.error(f"Reset password error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/auth/me', methods=['GET'])
+def auth_me():
+    """Return currently authenticated user profile or unauthenticated state"""
+    token = get_token_from_request()
+    if not token:
+        return jsonify({'success': True, 'authenticated': False, 'user': None})
+
+    payload = AuthService.decode_token(token)
+    if not payload:
+        return jsonify({'success': True, 'authenticated': False, 'user': None})
+
+    user_id = int(payload.get('sub')) if payload.get('sub') else None
+    user = db.get_user_by_id(user_id) if user_id else None
+    if not user:
+        return jsonify({'success': True, 'authenticated': False, 'user': None})
+
+    return jsonify({
+        'success': True,
+        'authenticated': True,
+        'user': user.to_dict()
+    })
+
+
+@app.route('/api/auth/profile', methods=['PUT'])
+@login_required
+def auth_update_profile():
+    """Update current user profile (name, institution)"""
+    data = request.get_json() or {}
+    name = data.get('name', '').strip()
+    institution = data.get('institution', '').strip()
+
+    if not name or len(name) < 2:
+        return jsonify({'success': False, 'error': 'Full name must be at least 2 characters long.'}), 400
+
+    user_id = g.current_user.id
+    updated_user = db.update_user_profile(user_id, name, institution)
+    return jsonify({
+        'success': True,
+        'message': 'Profile updated successfully.',
+        'user': updated_user.to_dict()
+    })
+
+
+@app.route('/api/auth/change-password', methods=['PUT'])
+@login_required
+def auth_change_password():
+    """Change current user password after verifying current password"""
+    data = request.get_json() or {}
+    current_password = data.get('current_password', '')
+    new_password = data.get('new_password', '')
+
+    user = g.current_user
+    if not user.password_hash:
+        return jsonify({'success': False, 'error': 'This account uses Google Sign-In and does not have a local password.'}), 400
+
+    if not AuthService.verify_password(current_password, user.password_hash):
+        return jsonify({'success': False, 'error': 'Current password is incorrect.'}), 400
+
+    if len(new_password) < 8 or not (any(c.isalpha() for c in new_password) and any(c.isdigit() for c in new_password)):
+        return jsonify({'success': False, 'error': 'New password must be at least 8 characters with letters and numbers.'}), 400
+
+    new_hash = AuthService.hash_password(new_password)
+    db.change_user_password(user.id, new_hash)
+    return jsonify({'success': True, 'message': 'Password has been changed successfully.'})
+
+
+@app.route('/api/auth/account', methods=['DELETE'])
+@login_required
+def auth_delete_account():
+    """Permanently delete user account and invalidate session"""
+    data = request.get_json() or {}
+    password = data.get('password', '')
+    user = g.current_user
+
+    # If local user with password, verify it
+    if user.password_hash:
+        if not password or not AuthService.verify_password(password, user.password_hash):
+            return jsonify({'success': False, 'error': 'Password confirmation required to delete account.'}), 400
+
+    db.delete_user(user.id)
+    response = jsonify({'success': True, 'message': 'Account permanently deleted.'})
+    response.delete_cookie('access_token')
+    return response
 
 
 @app.route('/api/auth/logout', methods=['POST'])
-def logout_user():
-    """Sign out current user and reset session"""
-    global current_session_user
-    current_session_user = None
-    return jsonify({
+def auth_logout():
+    """Clear session cookie and log user out"""
+    response = jsonify({
         'success': True,
         'authenticated': False,
-        'message': 'Logged out successfully'
+        'message': 'Logged out successfully.'
+    })
+    response.delete_cookie('access_token')
+    return response
+
+
+@app.route('/api/admin/users', methods=['GET'])
+@admin_required
+def admin_get_users():
+    """Admin-only endpoint: list all registered users"""
+    users = db.get_all_users()
+    return jsonify({
+        'success': True,
+        'total': len(users),
+        'users': [u.to_dict() for u in users]
     })
 
 

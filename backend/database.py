@@ -11,7 +11,7 @@ from datetime import datetime
 import logging
 
 from config import DATABASE_PATH, DB_TIMEOUT
-from models import PDFDocument, Exam, Question, Answer, ExamAttempt
+from models import PDFDocument, Exam, Question, Answer, ExamAttempt, User
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -42,6 +42,28 @@ class Database:
         """Create database tables if they don't exist"""
         with self._get_connection() as conn:
             cursor = conn.cursor()
+
+            # Users table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    email TEXT UNIQUE NOT NULL,
+                    password_hash TEXT,
+                    name TEXT NOT NULL,
+                    role TEXT NOT NULL DEFAULT 'user',
+                    auth_provider TEXT NOT NULL DEFAULT 'local',
+                    google_id TEXT DEFAULT '',
+                    is_verified BOOLEAN NOT NULL DEFAULT 0,
+                    verification_token TEXT DEFAULT '',
+                    reset_token TEXT DEFAULT '',
+                    reset_token_expires TEXT DEFAULT '',
+                    plan TEXT NOT NULL DEFAULT 'free',
+                    monthly_exam_count INTEGER NOT NULL DEFAULT 0,
+                    institution TEXT DEFAULT '',
+                    created_at TEXT NOT NULL,
+                    last_login TEXT DEFAULT ''
+                )
+            """)
             
             # PDFs table
             cursor.execute("""
@@ -169,6 +191,7 @@ class Database:
 
             # Columns to ensure in exams
             exam_columns = {
+                'user_id': 'INTEGER REFERENCES users(id) ON DELETE SET NULL',
                 'description': 'TEXT DEFAULT ""',
                 'source_type': 'TEXT DEFAULT "pdf"',
                 'source_ref': 'TEXT DEFAULT ""',
@@ -176,7 +199,10 @@ class Database:
                 'target_audience': 'TEXT DEFAULT "General"',
                 'time_limit': 'INTEGER DEFAULT 0',
                 'passing_score': 'REAL DEFAULT 70.0',
-                'total_points': 'REAL DEFAULT 0.0'
+                'total_points': 'REAL DEFAULT 0.0',
+                'tags': 'TEXT DEFAULT "[]"',
+                'access_code': 'TEXT DEFAULT ""',
+                'is_public': 'BOOLEAN DEFAULT 1'
             }
             cursor.execute("PRAGMA table_info(exams)")
             existing_exam_cols = {row['name'] for row in cursor.fetchall()}
@@ -680,3 +706,205 @@ class Database:
                 'avg_score': avg_score,
                 'total_pdfs': total_pdfs
             }
+
+    # =========================================================================
+    # User Authentication & Management Operations
+    # =========================================================================
+    def create_user(self, email: str, password_hash: Optional[str], name: str,
+                    role: str = 'user', auth_provider: str = 'local',
+                    google_id: str = '', is_verified: bool = False,
+                    verification_token: str = '', institution: str = '',
+                    plan: str = 'free') -> User:
+        """Create a new user record in the database"""
+        now = datetime.now().isoformat()
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO users (
+                    email, password_hash, name, role, auth_provider,
+                    google_id, is_verified, verification_token,
+                    plan, monthly_exam_count, institution, created_at, last_login
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
+            """, (
+                email.lower().strip(), password_hash, name.strip(), role,
+                auth_provider, google_id, 1 if is_verified else 0,
+                verification_token, plan, institution.strip(), now, now
+            ))
+            user_id = cursor.lastrowid
+            conn.commit()
+            return self.get_user_by_id(user_id)
+
+    def get_user_by_email(self, email: str) -> Optional[User]:
+        """Fetch a user by case-insensitive email address"""
+        if not email:
+            return None
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM users WHERE LOWER(email) = LOWER(?)", (email.strip(),))
+            row = cursor.fetchone()
+            if row:
+                return self._row_to_user(row)
+            return None
+
+    def get_user_by_id(self, user_id: int) -> Optional[User]:
+        """Fetch a user by their primary key ID"""
+        if not user_id:
+            return None
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+            row = cursor.fetchone()
+            if row:
+                return self._row_to_user(row)
+            return None
+
+    def get_user_by_verification_token(self, token: str) -> Optional[User]:
+        """Fetch user by email verification token"""
+        if not token:
+            return None
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM users WHERE verification_token = ?", (token,))
+            row = cursor.fetchone()
+            if row:
+                return self._row_to_user(row)
+            return None
+
+    def verify_user_email(self, token: str) -> Optional[User]:
+        """Mark user account as verified using token and clear the token"""
+        user = self.get_user_by_verification_token(token)
+        if not user:
+            return None
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE users
+                SET is_verified = 1, verification_token = ''
+                WHERE id = ?
+            """, (user.id,))
+            conn.commit()
+            return self.get_user_by_id(user.id)
+
+    def set_reset_token(self, email: str, token: str, expires_iso: str) -> bool:
+        """Store password reset token and expiration timestamp"""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE users
+                SET reset_token = ?, reset_token_expires = ?
+                WHERE LOWER(email) = LOWER(?)
+            """, (token, expires_iso, email.strip()))
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def get_user_by_reset_token(self, token: str) -> Optional[User]:
+        """Fetch user by valid non-expired password reset token"""
+        if not token:
+            return None
+        now_iso = datetime.now().isoformat()
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM users 
+                WHERE reset_token = ? AND reset_token_expires >= ?
+            """, (token, now_iso))
+            row = cursor.fetchone()
+            if row:
+                return self._row_to_user(row)
+            return None
+
+    def reset_password(self, token: str, new_password_hash: str) -> bool:
+        """Update password hash and invalidate reset token"""
+        user = self.get_user_by_reset_token(token)
+        if not user:
+            return False
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE users
+                SET password_hash = ?, reset_token = '', reset_token_expires = ''
+                WHERE id = ?
+            """, (new_password_hash, user.id))
+            conn.commit()
+            return True
+
+    def update_user_profile(self, user_id: int, name: str, institution: Optional[str] = None) -> Optional[User]:
+        """Update user name and institution"""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            if institution is not None:
+                cursor.execute("""
+                    UPDATE users
+                    SET name = ?, institution = ?
+                    WHERE id = ?
+                """, (name.strip(), institution.strip(), user_id))
+            else:
+                cursor.execute("""
+                    UPDATE users
+                    SET name = ?
+                    WHERE id = ?
+                """, (name.strip(), user_id))
+            conn.commit()
+            return self.get_user_by_id(user_id)
+
+    def change_user_password(self, user_id: int, new_password_hash: str) -> bool:
+        """Update user's password hash"""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE users SET password_hash = ? WHERE id = ?", (new_password_hash, user_id))
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def delete_user(self, user_id: int) -> bool:
+        """Delete user account and disassociate or delete their exams"""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def get_all_users(self) -> List[User]:
+        """Retrieve all registered users (for admin panel)"""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM users ORDER BY created_at DESC")
+            rows = cursor.fetchall()
+            return [self._row_to_user(r) for r in rows]
+
+    def update_user_last_login(self, user_id: int):
+        """Update timestamp of last user login"""
+        now = datetime.now().isoformat()
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE users SET last_login = ? WHERE id = ?", (now, user_id))
+            conn.commit()
+
+    def increment_user_exam_count(self, user_id: int) -> int:
+        """Increment user's monthly exam generation count"""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE users SET monthly_exam_count = monthly_exam_count + 1 WHERE id = ?", (user_id,))
+            conn.commit()
+            user = self.get_user_by_id(user_id)
+            return user.monthly_exam_count if user else 1
+
+    def _row_to_user(self, row) -> User:
+        """Helper to convert a sqlite3.Row to a User instance"""
+        return User(
+            id=row['id'],
+            email=row['email'],
+            password_hash=row['password_hash'],
+            name=row['name'],
+            role=row['role'],
+            auth_provider=row['auth_provider'],
+            google_id=row['google_id'] or '',
+            is_verified=bool(row['is_verified']),
+            verification_token=row['verification_token'] or '',
+            reset_token=row['reset_token'] or '',
+            reset_token_expires=row['reset_token_expires'] or '',
+            plan=row['plan'] or 'free',
+            monthly_exam_count=int(row['monthly_exam_count'] or 0),
+            institution=row['institution'] or '',
+            created_at=row['created_at'],
+            last_login=row['last_login'] or ''
+        )

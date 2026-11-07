@@ -10,6 +10,48 @@ import json
 
 
 @dataclass
+class User:
+    """Represents an application user with role and plan info"""
+    id: Optional[int] = None
+    email: str = ""
+    password_hash: Optional[str] = None
+    name: str = ""
+    role: str = "user"  # 'user', 'admin'
+    auth_provider: str = "local"  # 'local', 'google'
+    google_id: str = ""
+    is_verified: bool = False
+    verification_token: str = ""
+    reset_token: str = ""
+    reset_token_expires: str = ""
+    plan: str = "free"  # 'free', 'pro', 'institution'
+    monthly_exam_count: int = 0
+    institution: str = ""
+    created_at: str = ""
+    last_login: str = ""
+
+    def to_dict(self, include_sensitive: bool = False):
+        data = {
+            'id': self.id,
+            'email': self.email,
+            'name': self.name,
+            'role': self.role,
+            'auth_provider': self.auth_provider,
+            'is_verified': bool(self.is_verified),
+            'plan': self.plan,
+            'monthly_exam_count': self.monthly_exam_count,
+            'institution': self.institution or '',
+            'created_at': self.created_at,
+            'last_login': self.last_login or ''
+        }
+        if include_sensitive:
+            data['password_hash'] = self.password_hash
+            data['verification_token'] = self.verification_token
+            data['reset_token'] = self.reset_token
+            data['reset_token_expires'] = self.reset_token_expires
+        return data
+
+
+@dataclass
 class PDFDocument:
     """Represents an uploaded PDF document"""
     id: Optional[int] = None

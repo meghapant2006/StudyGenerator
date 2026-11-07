@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>StudyWise AI - Academic Exam Generator & Assessment Platform</title>
+    <title>StudyGeneratorExam - AI Exam Generation & Assessment Platform</title>
 
     <!-- Inter & Plus Jakarta Sans Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -70,12 +70,12 @@
             
             <!-- Brand Logo Left -->
             <div class="flex items-center gap-3 cursor-pointer group" onclick="appState.navigateTo('dashboard')">
-                <img src="assets/icon.png" alt="StudyWise AI Icon" class="w-10 h-10 rounded-xl object-contain shadow-xs ring-1 ring-slate-200/90 bg-white p-0.5 group-hover:scale-105 transition-transform"/>
+                <img src="assets/icon.png" alt="StudyGeneratorExam Icon" class="w-10 h-10 rounded-xl object-contain shadow-xs ring-1 ring-slate-200/90 bg-white p-0.5 group-hover:scale-105 transition-transform"/>
                 <div class="flex flex-col">
-                    <div class="flex items-center gap-2">
-                        <img src="assets/logo_transparent.png" alt="StudyWise AI" class="h-6 w-auto object-contain max-w-[150px]"/>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-base font-extrabold tracking-tight text-slate-900 group-hover:text-indigo-600 transition-colors">Study<span class="text-indigo-600">Generator</span>Exam</span>
                     </div>
-                    <span class="text-[11px] text-slate-500 font-normal -mt-0.5">Higher Ed Assessment Suite</span>
+                    <span class="text-[11px] text-slate-500 font-normal -mt-0.5">AI Exam Generation & Grading Platform</span>
                 </div>
             </div>
 
@@ -104,7 +104,7 @@
             </nav>
 
             <!-- Right Utility Actions -->
-            <div class="flex items-center gap-2.5">
+            <div class="flex items-center gap-2">
                 <!-- AI Engine Status Badge -->
                 <button id="provider-badge" onclick="appState.openSettings()" class="hidden md:flex items-center gap-2 bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-3 py-1 rounded-full text-xs font-semibold hover:bg-emerald-100 transition-colors" title="Click to configure AI providers">
                     <span class="relative flex h-2 w-2">
@@ -119,52 +119,66 @@
                     <i data-lucide="settings" class="w-4 h-4"></i>
                 </button>
 
-                <!-- Google Sign-In Button (shown when logged out) -->
-                <button id="btn-google-login" onclick="appState.openGoogleAuthModal()" class="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs px-3.5 py-1.5 rounded-full border border-slate-300 shadow-xs hover:shadow transition-all active:scale-95">
-                    <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24">
-                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                    </svg>
-                    <span>Sign in with Google</span>
-                </button>
+                <!-- Logged Out Auth Actions -->
+                <div id="auth-logged-out-actions" class="flex items-center gap-2">
+                    <button onclick="appState.openAuthModal('login')" class="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-indigo-600 px-3 py-1.5 rounded-full hover:bg-slate-100 transition-all">
+                        <span>Sign In</span>
+                    </button>
+                    <button onclick="appState.openAuthModal('signup')" class="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs px-3.5 py-1.5 rounded-full shadow-xs hover:shadow transition-all active:scale-95">
+                        <span>Sign Up</span>
+                    </button>
+                    <button id="btn-google-login" onclick="appState.loginWithGoogle()" class="hidden sm:flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs px-3 py-1.5 rounded-full border border-slate-300 shadow-xs transition-all active:scale-95" title="Sign in with Google">
+                        <svg class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                        </svg>
+                        <span>Google</span>
+                    </button>
+                </div>
 
                 <!-- User Profile Container & Dropdown (shown when logged in) -->
                 <div id="user-profile-container" class="relative hidden">
                     <button id="user-profile-btn" onclick="appState.toggleUserMenu()" class="flex items-center gap-2 p-1 pr-2.5 rounded-full hover:bg-slate-100 border border-slate-200/80 transition-all focus:outline-none">
-                        <img id="user-avatar-img" src="assets/icon.png" alt="User Profile" class="w-7 h-7 rounded-full object-cover ring-2 ring-indigo-500/20"/>
+                        <div id="user-avatar-initials" class="w-7 h-7 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center ring-2 ring-indigo-500/20">
+                            U
+                        </div>
                         <div class="hidden lg:flex flex-col text-left">
-                            <span id="user-display-name" class="text-xs font-semibold text-slate-800 leading-tight">Prof. Alex Morgan</span>
-                            <span id="user-role-label" class="text-[10px] text-slate-500 leading-tight">Lead Instructor</span>
+                            <span id="user-display-name" class="text-xs font-semibold text-slate-800 leading-tight">Educator</span>
+                            <span id="user-role-label" class="text-[10px] text-slate-500 leading-tight">Instructor</span>
                         </div>
                         <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400"></i>
                     </button>
 
                     <!-- Dropdown Menu -->
-                    <div id="user-dropdown-menu" class="hidden absolute right-0 mt-2 w-60 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50 animate-fadeIn">
+                    <div id="user-dropdown-menu" class="hidden absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50 animate-fadeIn">
                         <div class="px-4 py-2.5 border-b border-slate-100">
-                            <p class="text-xs font-bold text-slate-900" id="menu-user-name">Prof. Alex Morgan</p>
-                            <p class="text-[11px] text-slate-500 truncate" id="menu-user-email">alex.morgan@university.edu</p>
+                            <p class="text-xs font-bold text-slate-900" id="menu-user-name">User</p>
+                            <p class="text-[11px] text-slate-500 truncate" id="menu-user-email">user@example.com</p>
                             <div class="mt-1.5 flex items-center gap-1.5">
-                                <span class="inline-block text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100" id="menu-user-plan">Institutional Pro</span>
-                                <span class="text-[10px] text-emerald-600 font-medium flex items-center gap-1">
-                                    <i data-lucide="check" class="w-2.5 h-2.5"></i> Google Synced
+                                <span class="inline-block text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100" id="menu-user-plan">Free Plan</span>
+                                <span id="menu-verified-badge" class="text-[10px] text-emerald-600 font-medium flex items-center gap-0.5">
+                                    <i data-lucide="check" class="w-2.5 h-2.5"></i> Verified
                                 </span>
                             </div>
                         </div>
                         <div class="py-1 text-xs">
+                            <a href="#profile" onclick="appState.navigateTo('profile'); appState.closeUserMenu();" class="flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:bg-slate-50 transition-colors">
+                                <i data-lucide="user" class="w-4 h-4 text-slate-400"></i>
+                                <span>Profile & Account</span>
+                            </a>
+                            <a id="menu-admin-link" href="#admin" onclick="appState.navigateTo('admin'); appState.closeUserMenu();" class="hidden flex items-center gap-2.5 px-4 py-2 text-indigo-700 bg-indigo-50/50 hover:bg-indigo-50 font-semibold transition-colors">
+                                <i data-lucide="shield" class="w-4 h-4 text-indigo-600"></i>
+                                <span>Admin Panel</span>
+                            </a>
                             <a href="#dashboard" onclick="appState.navigateTo('dashboard'); appState.closeUserMenu();" class="flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:bg-slate-50 transition-colors">
                                 <i data-lucide="layout-dashboard" class="w-4 h-4 text-slate-400"></i>
-                                <span>Assessment Dashboard</span>
+                                <span>Dashboard</span>
                             </a>
                             <a href="#wizard" onclick="appState.navigateTo('wizard'); appState.closeUserMenu();" class="flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:bg-slate-50 transition-colors">
                                 <i data-lucide="plus-circle" class="w-4 h-4 text-slate-400"></i>
-                                <span>Create New Exam</span>
-                            </a>
-                            <a href="#editor" onclick="appState.navigateTo('editor'); appState.closeUserMenu();" class="flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:bg-slate-50 transition-colors">
-                                <i data-lucide="help-circle" class="w-4 h-4 text-slate-400"></i>
-                                <span>Question Bank</span>
+                                <span>Create Exam</span>
                             </a>
                             <a href="#settings" onclick="appState.openSettings(); appState.closeUserMenu();" class="flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:bg-slate-50 transition-colors">
                                 <i data-lucide="sliders" class="w-4 h-4 text-slate-400"></i>
@@ -185,6 +199,27 @@
 
     <!-- ==================== MAIN CONTENT CANVAS ==================== -->
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- Email Verification Alert Banner (shown when logged in but unverified) -->
+        <div id="email-verification-banner" class="hidden mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200/90 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs shadow-xs">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center flex-shrink-0">
+                    <i data-lucide="mail-warning" class="w-4 h-4"></i>
+                </div>
+                <div>
+                    <p class="font-bold text-slate-900">Please verify your email address</p>
+                    <p class="text-slate-600 mt-0.5">We sent a verification token to <strong id="unverified-email-label">your email</strong>. Confirm your address to activate full export capabilities.</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="appState.resendVerificationEmail()" class="px-3 py-1.5 rounded-lg bg-white border border-amber-300 text-amber-900 font-semibold hover:bg-amber-100/60 transition-colors">
+                    Resend Link
+                </button>
+                <button onclick="appState.simulateInstantVerify()" class="px-3.5 py-1.5 rounded-lg bg-amber-600 text-white font-semibold hover:bg-amber-700 transition-colors shadow-xs">
+                    Verify Now
+                </button>
+            </div>
+        </div>
 
         <!-- ================= VIEW 1: DASHBOARD ================= -->
         <section id="view-dashboard" class="app-view space-y-8">
@@ -1153,6 +1188,152 @@
                 </div>
             </div>
         </section>
+
+        <!-- ================= VIEW 7: USER PROFILE & ACCOUNT ================= -->
+        <section id="view-profile" class="app-view hidden space-y-8">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <h1 class="text-2xl lg:text-3xl font-bold text-slate-900 tracking-tight">Profile & Account Settings</h1>
+                    <p class="text-xs sm:text-sm text-slate-500 mt-1">Manage your identity, academic credentials, security settings, and plan limits.</p>
+                </div>
+                <div>
+                    <button onclick="appState.navigateTo('dashboard')" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-xs text-xs font-medium transition-all">
+                        <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
+                        <span>Back to Dashboard</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                <!-- Left Column: User Summary Card (4 cols) -->
+                <div class="lg:col-span-4 bg-white border border-slate-200 rounded-3xl p-6 shadow-xs space-y-6 text-center">
+                    <div class="relative inline-block mx-auto">
+                        <div id="profile-avatar-initials" class="w-20 h-20 rounded-2xl bg-indigo-600 text-white font-bold text-2xl flex items-center justify-center shadow-md ring-4 ring-indigo-50">
+                            U
+                        </div>
+                    </div>
+                    <div>
+                        <h2 id="profile-card-name" class="text-lg font-bold text-slate-900">Educator</h2>
+                        <p id="profile-card-email" class="text-xs text-slate-500 mt-0.5">user@example.com</p>
+                        <div class="mt-3 flex items-center justify-center gap-2">
+                            <span id="profile-card-role" class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200/60">Instructor</span>
+                            <span id="profile-card-plan" class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">Free Plan</span>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-slate-100 pt-4 space-y-2.5 text-xs text-left text-slate-600">
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Account ID:</span>
+                            <strong id="profile-card-id" class="text-slate-700 font-mono">#1</strong>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Auth Method:</span>
+                            <strong id="profile-card-provider" class="text-slate-700">Email & Password</strong>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Email Status:</span>
+                            <span id="profile-card-verified" class="font-semibold text-emerald-600 flex items-center gap-1">
+                                <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Verified
+                            </span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Member Since:</span>
+                            <strong id="profile-card-created" class="text-slate-700">Today</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Settings Forms (8 cols) -->
+                <div class="lg:col-span-8 space-y-6">
+                    <!-- Form 1: General Info -->
+                    <div class="bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-xs space-y-5">
+                        <div class="flex items-center gap-3 pb-4 border-b border-slate-100">
+                            <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                                <i data-lucide="user" class="w-4 h-4"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-bold text-slate-900">Personal Information</h3>
+                                <p class="text-xs text-slate-500">Update your public display name and academic affiliation</p>
+                            </div>
+                        </div>
+
+                        <form onsubmit="appState.handleProfileUpdate(event)" class="space-y-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1" for="prof-input-name">Full Name</label>
+                                    <input id="prof-input-name" type="text" required class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="e.g. Prof. Alex Morgan"/>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1" for="prof-input-institution">University / Department</label>
+                                    <input id="prof-input-institution" type="text" class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="e.g. Stanford University"/>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1" for="prof-input-email">Email Address</label>
+                                <input id="prof-input-email" type="email" disabled class="w-full px-3.5 py-2.5 text-xs bg-slate-100 border border-slate-200 rounded-xl text-slate-500 cursor-not-allowed"/>
+                                <p class="text-[11px] text-slate-400 mt-1">Email address cannot be changed directly.</p>
+                            </div>
+                            <div class="flex justify-end pt-2">
+                                <button type="submit" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-xs transition-all active:scale-95 flex items-center gap-2">
+                                    <i data-lucide="save" class="w-3.5 h-3.5"></i>
+                                    <span>Save Profile</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Form 2: Change Password -->
+                    <div id="prof-box-change-pwd" class="bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-xs space-y-5">
+                        <div class="flex items-center gap-3 pb-4 border-b border-slate-100">
+                            <div class="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+                                <i data-lucide="key" class="w-4 h-4"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-bold text-slate-900">Change Password</h3>
+                                <p class="text-xs text-slate-500">Ensure your account uses a secure password with letters and numbers</p>
+                            </div>
+                        </div>
+
+                        <form onsubmit="appState.handleChangePassword(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1" for="prof-input-current-pwd">Current Password</label>
+                                <input id="prof-input-current-pwd" type="password" required class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500"/>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1" for="prof-input-new-pwd">New Password</label>
+                                    <input id="prof-input-new-pwd" type="password" required minlength="8" class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500" placeholder="Min. 8 chars (letters + numbers)"/>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1" for="prof-input-confirm-pwd">Confirm New Password</label>
+                                    <input id="prof-input-confirm-pwd" type="password" required minlength="8" class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500"/>
+                                </div>
+                            </div>
+                            <div class="flex justify-end pt-2">
+                                <button type="submit" class="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-semibold text-xs shadow-xs transition-all active:scale-95 flex items-center gap-2">
+                                    <i data-lucide="lock" class="w-3.5 h-3.5"></i>
+                                    <span>Update Password</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Danger Zone: Delete Account -->
+                    <div class="bg-rose-50/40 border border-rose-200 rounded-3xl p-6 sm:p-7 shadow-xs space-y-4">
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <h3 class="text-sm font-bold text-rose-900">Delete Account</h3>
+                                <p class="text-xs text-rose-700 mt-0.5">Permanently remove your account, exams, questions, and attempt records. This action cannot be undone.</p>
+                            </div>
+                            <button onclick="appState.openDeleteAccountModal()" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs shadow-xs transition-all active:scale-95 flex-shrink-0 flex items-center gap-1.5">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                <span>Delete Account</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
     </main>
 
     <!-- ==================== MODALS ==================== -->
@@ -1358,55 +1539,179 @@
         </div>
     </div>
 
-    <!-- Modal 5: Google Authentication -->
-    <div id="modal-google-auth" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
-        <div class="bg-white rounded-3xl border border-slate-200 max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-6 animate-scaleIn">
-            <div class="text-center space-y-2">
-                <div class="mx-auto w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center shadow-xs">
-                    <img src="assets/icon.png" alt="StudyWise AI" class="w-8 h-8 rounded-xl object-contain"/>
+    <!-- Modal 5: Unified Authentication Modal (Sign In, Sign Up, Forgot & Reset Password) -->
+    <div id="modal-auth" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+        <div class="bg-white rounded-3xl border border-slate-200 max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-5 animate-scaleIn">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <img src="assets/icon.png" alt="StudyGeneratorExam" class="w-8 h-8 rounded-xl object-contain ring-1 ring-slate-200 p-0.5 bg-white"/>
+                    <div>
+                        <h2 class="text-base font-bold text-slate-900">Study<span class="text-indigo-600">Generator</span>Exam</h2>
+                        <p class="text-[11px] text-slate-500">Academic Assessment Platform</p>
+                    </div>
                 </div>
-                <h3 class="text-xl font-bold text-slate-900 tracking-tight">Sign in with Google</h3>
-                <p class="text-xs text-slate-500">Access your saved exams, question banks, and student scores with one click.</p>
+                <button type="button" onclick="appState.closeAuthModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
             </div>
 
-            <!-- One-Click Google Action -->
-            <div class="space-y-3">
-                <button onclick="appState.loginWithGoogle()" class="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-sm py-3 px-4 rounded-xl border border-slate-300 shadow-sm hover:shadow transition-all active:scale-[0.98]">
-                    <svg class="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
+            <!-- Tab Switcher (Login / Signup) -->
+            <div id="auth-tabs-header" class="grid grid-cols-2 gap-1 bg-slate-100 p-1 rounded-xl text-xs font-semibold">
+                <button id="tab-auth-login" onclick="appState.switchAuthTab('login')" class="py-2 rounded-lg bg-white text-indigo-600 shadow-xs transition-all">Sign In</button>
+                <button id="tab-auth-signup" onclick="appState.switchAuthTab('signup')" class="py-2 rounded-lg text-slate-600 hover:text-slate-900 transition-all">Create Account</button>
+            </div>
+
+            <!-- TAB 1: LOGIN -->
+            <div id="auth-panel-login" class="space-y-4">
+                <form onsubmit="appState.handleLogin(event)" class="space-y-3.5">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1" for="login-email">Email Address</label>
+                        <input id="login-email" type="email" required placeholder="name@university.edu" class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"/>
+                    </div>
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="text-xs font-semibold text-slate-700" for="login-password">Password</label>
+                            <button type="button" onclick="appState.switchAuthTab('forgot')" class="text-[11px] font-medium text-indigo-600 hover:text-indigo-800">Forgot password?</button>
+                        </div>
+                        <input id="login-password" type="password" required placeholder="••••••••" class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"/>
+                    </div>
+                    <div class="flex items-center justify-between text-xs text-slate-600 pt-1">
+                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                            <input id="login-remember" type="checkbox" checked class="rounded text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"/>
+                            <span>Remember me</span>
+                        </label>
+                    </div>
+                    <button id="btn-login-submit" type="submit" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-xs transition-all active:scale-95 flex items-center justify-center gap-2">
+                        <span>Sign In</span>
+                        <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                    </button>
+                </form>
+
+                <div class="relative flex items-center justify-center py-1">
+                    <div class="border-t border-slate-200 w-full"></div>
+                    <span class="bg-white px-3 text-[11px] font-medium text-slate-400 absolute">or continue with</span>
+                </div>
+
+                <!-- Google Action -->
+                <button type="button" onclick="appState.loginWithGoogle()" class="w-full flex items-center justify-center gap-2.5 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs py-2.5 px-4 rounded-xl border border-slate-300 shadow-xs transition-all active:scale-[0.98]">
+                    <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24">
                         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                         <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
                         <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
                         <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
                     </svg>
-                    <span>Continue with Google</span>
+                    <span>Google Account</span>
                 </button>
 
-                <div class="relative flex items-center justify-center py-2">
-                    <div class="border-t border-slate-200 w-full"></div>
-                    <span class="bg-white px-3 text-[11px] font-medium text-slate-400 absolute">or select demo educator</span>
-                </div>
-
-                <!-- Fast preset accounts -->
-                <div class="grid grid-cols-2 gap-2 text-xs">
-                    <button type="button" onclick="appState.loginWithCustomUser('Prof. Alex Morgan', 'alex.morgan@stanford.edu', 'Lead Instructor')" class="p-2.5 rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 text-left transition-colors">
-                        <p class="font-semibold text-slate-800">Prof. Alex Morgan</p>
-                        <p class="text-[10px] text-slate-500 truncate">Lead Instructor</p>
-                    </button>
-                    <button type="button" onclick="appState.loginWithCustomUser('Dr. Sarah Chen', 's.chen@mit.edu', 'Department Head')" class="p-2.5 rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 text-left transition-colors">
-                        <p class="font-semibold text-slate-800">Dr. Sarah Chen</p>
-                        <p class="text-[10px] text-slate-500 truncate">Department Head</p>
-                    </button>
+                <!-- Quick Preset Selector for Testing -->
+                <div class="pt-2 text-[11px] text-slate-500 bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 space-y-1.5">
+                    <p class="font-bold text-slate-700">Quick Demo Accounts:</p>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" onclick="appState.fillLoginPreset('educator@studygeneratorexam.com', 'EducatorPass123!')" class="px-2 py-1 rounded-md bg-white border border-slate-200 hover:border-indigo-300 text-indigo-700 font-semibold text-[10px]">
+                            Educator Demo
+                        </button>
+                        <button type="button" onclick="appState.fillLoginPreset('admin@studygeneratorexam.com', 'AdminPass123!')" class="px-2 py-1 rounded-md bg-white border border-slate-200 hover:border-indigo-300 text-slate-700 font-semibold text-[10px]">
+                            Admin Demo
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <!-- Trust / Privacy note -->
-            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/80 flex items-start gap-2.5 text-[11px] text-slate-600">
-                <i data-lucide="shield-check" class="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5"></i>
-                <span>FERPA & GDPR compliant. We only use your name and email to sync your tests. No third-party data sharing.</span>
+            <!-- TAB 2: SIGN UP -->
+            <div id="auth-panel-signup" class="space-y-4 hidden">
+                <form onsubmit="appState.handleSignup(event)" class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1" for="signup-name">Full Name</label>
+                        <input id="signup-name" type="text" required placeholder="e.g. Prof. Alex Morgan" class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500"/>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1" for="signup-email">Email Address</label>
+                        <input id="signup-email" type="email" required placeholder="name@university.edu" class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500"/>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1" for="signup-institution">University / Department (Optional)</label>
+                        <input id="signup-institution" type="text" placeholder="e.g. Stanford University" class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500"/>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1" for="signup-password">Password</label>
+                        <input id="signup-password" type="password" required minlength="8" placeholder="At least 8 chars (letters + numbers)" class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500"/>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1" for="signup-confirm-password">Confirm Password</label>
+                        <input id="signup-confirm-password" type="password" required minlength="8" placeholder="Repeat password" class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500"/>
+                    </div>
+                    <button id="btn-signup-submit" type="submit" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-xs transition-all active:scale-95 flex items-center justify-center gap-2">
+                        <span>Create Account</span>
+                        <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
+                    </button>
+                </form>
             </div>
 
-            <div class="pt-1 flex justify-center">
-                <button type="button" onclick="appState.closeGoogleAuthModal()" class="text-xs text-slate-500 hover:text-slate-800 underline">Close & Continue as Guest</button>
+            <!-- TAB 3: FORGOT PASSWORD -->
+            <div id="auth-panel-forgot" class="space-y-4 hidden">
+                <div class="text-xs text-slate-600">
+                    Enter your account email and we'll generate a secure, time-limited password reset token.
+                </div>
+                <form onsubmit="appState.handleForgotPassword(event)" class="space-y-3.5">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1" for="forgot-email">Account Email</label>
+                        <input id="forgot-email" type="email" required placeholder="name@university.edu" class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500"/>
+                    </div>
+                    <button type="submit" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-xs transition-all active:scale-95">
+                        Send Reset Token
+                    </button>
+                    <div class="text-center pt-2">
+                        <button type="button" onclick="appState.switchAuthTab('login')" class="text-xs text-indigo-600 hover:underline">
+                            Back to Sign In
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- TAB 4: RESET PASSWORD -->
+            <div id="auth-panel-reset" class="space-y-4 hidden">
+                <div class="text-xs text-slate-600">
+                    Paste your reset token below and create your new password.
+                </div>
+                <form onsubmit="appState.handleResetPassword(event)" class="space-y-3.5">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1" for="reset-token-input">Reset Token</label>
+                        <input id="reset-token-input" type="text" required placeholder="Token from email" class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-mono focus:outline-none focus:border-indigo-500"/>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1" for="reset-new-password">New Password</label>
+                        <input id="reset-new-password" type="password" required minlength="8" placeholder="Min. 8 chars (letters + numbers)" class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500"/>
+                    </div>
+                    <button type="submit" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-xs transition-all active:scale-95">
+                        Set New Password
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 6: Delete Account Confirmation -->
+    <div id="modal-confirm-delete-account" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+        <div class="bg-white rounded-3xl border border-slate-200 max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center flex-shrink-0">
+                    <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-slate-900">Permanently Delete Account?</h3>
+                    <p class="text-xs text-slate-500">This action will delete all your exams and score history immediately.</p>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1" for="delete-account-password">Confirm Password</label>
+                <input id="delete-account-password" type="password" placeholder="Enter password to confirm" class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-rose-500"/>
+            </div>
+
+            <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+                <button type="button" onclick="appState.closeDeleteAccountModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs">Cancel</button>
+                <button type="button" onclick="appState.confirmDeleteAccount()" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs shadow-xs">Yes, Delete Forever</button>
             </div>
         </div>
     </div>
@@ -1419,16 +1724,16 @@
                 <!-- Column 1: Brand & Identity -->
                 <div class="lg:col-span-2 space-y-4">
                     <div class="flex items-center gap-3">
-                        <img src="assets/icon.png" alt="StudyWise AI" class="w-9 h-9 rounded-xl object-contain ring-1 ring-slate-200 bg-white p-0.5 shadow-xs"/>
-                        <img src="assets/logo_transparent.png" alt="StudyWise AI" class="h-6 w-auto object-contain max-w-[150px]"/>
+                        <img src="assets/icon.png" alt="StudyGeneratorExam" class="w-9 h-9 rounded-xl object-contain ring-1 ring-slate-200 bg-white p-0.5 shadow-xs"/>
+                        <span class="text-base font-extrabold tracking-tight text-slate-900">Study<span class="text-indigo-600">Generator</span>Exam</span>
                     </div>
                     <p class="text-xs text-slate-500 leading-relaxed max-w-sm">
-                        StudyWise AI helps educators, teachers, and students create balanced, print-ready examinations and LMS quizzes from any document or topic in seconds.
+                        StudyGeneratorExam empowers educators and students to create accredited examinations, customizable question blueprints, and LMS quizzes from any document or topic in seconds.
                     </p>
                     <!-- Live System Status Badge -->
                     <div class="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-800 rounded-full text-[11px] font-semibold border border-emerald-200/80">
                         <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                        <span id="footer-status-text">All Systems Operational &bull; API v2.4</span>
+                        <span id="footer-status-text">All Systems Operational &bull; StudyGeneratorExam v3.0</span>
                     </div>
                 </div>
 

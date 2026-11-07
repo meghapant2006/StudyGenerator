@@ -42,7 +42,8 @@ class AppState {
         // Settings
         this.settings = this.loadSettings();
 
-        // User Session
+        // User Session & JWT Token
+        this.authToken = localStorage.getItem('studygen_token') || null;
         this.currentUser = this.loadUserFromStorage();
 
         this.init();
@@ -150,7 +151,15 @@ class AppState {
         });
 
         // View-specific initializers
-        if (viewName === 'dashboard') {
+        if (viewName === 'profile') {
+            if (!this.currentUser) {
+                this.showToast('Please sign in to view your profile & settings.', 'info');
+                this.openAuthModal('login');
+                this.navigateTo('dashboard');
+                return;
+            }
+            this.renderProfileView();
+        } else if (viewName === 'dashboard') {
             this.loadDashboardData();
         } else if (viewName === 'editor') {
             this.renderQuestions();
@@ -1411,11 +1420,20 @@ class AppState {
     }
 
     // -------------------------------------------------------------
-    // Google Authentication & User Profile Management
+    // Authentication & User Session Management (Phase 1)
     // -------------------------------------------------------------
+    async authFetch(url, options = {}) {
+        options.headers = options.headers || {};
+        if (this.authToken && !options.headers['Authorization']) {
+            options.headers['Authorization'] = `Bearer ${this.authToken}`;
+        }
+        options.credentials = 'same-origin';
+        return fetch(url, options);
+    }
+
     loadUserFromStorage() {
         try {
-            const raw = localStorage.getItem('studywise_user');
+            const raw = localStorage.getItem('studygen_user');
             if (raw) return JSON.parse(raw);
         } catch (e) {
             console.error('Failed reading user session:', e);
@@ -1423,12 +1441,19 @@ class AppState {
         return null;
     }
 
-    saveUserToStorage(user) {
+    saveUserToStorage(user, token = null) {
         try {
             if (user) {
-                localStorage.setItem('studywise_user', JSON.stringify(user));
+                localStorage.setItem('studygen_user', JSON.stringify(user));
             } else {
-                localStorage.removeItem('studywise_user');
+                localStorage.removeItem('studygen_user');
+            }
+            if (token) {
+                this.authToken = token;
+                localStorage.setItem('studygen_token', token);
+            } else if (user === null) {
+                this.authToken = null;
+                localStorage.removeItem('studygen_token');
             }
         } catch (e) {
             console.error('Failed storing user session:', e);
@@ -1436,36 +1461,424 @@ class AppState {
     }
 
     async initAuth() {
-        if (this.currentUser) {
-            this.updateAuthUI(this.currentUser);
-        } else {
-            try {
-                const res = await fetch(`${API_BASE}/auth/me`);
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.authenticated && data.user) {
-                        this.currentUser = data.user;
-                        this.saveUserToStorage(data.user);
-                    }
+        // Validate session with backend
+        try {
+            const res = await this.authFetch(`${API_BASE}/auth/me`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.authenticated && data.user) {
+                    this.currentUser = data.user;
+                    this.saveUserToStorage(data.user);
+                    this.updateAuthUI(this.currentUser);
+                    return;
                 }
-            } catch (err) {
-                console.warn('Backend auth check skipped:', err);
             }
+        } catch (err) {
+            console.warn('Backend auth check warning:', err);
+        }
+
+        // If local token invalid or guest
+        if (!this.currentUser) {
+            this.updateAuthUI(null);
+        } else {
             this.updateAuthUI(this.currentUser);
         }
     }
 
-    openGoogleAuthModal() {
-        const modal = document.getElementById('modal-google-auth');
+    openAuthModal(tab = 'login') {
+        const modal = document.getElementById('modal-auth');
         if (modal) {
+            this.switchAuthTab(tab);
             modal.classList.remove('hidden');
             this.renderIcons();
         }
     }
 
-    closeGoogleAuthModal() {
-        const modal = document.getElementById('modal-google-auth');
+    closeAuthModal() {
+        const modal = document.getElementById('modal-auth');
         if (modal) modal.classList.add('hidden');
+    }
+
+    switchAuthTab(tab) {
+        const panels = ['login', 'signup', 'forgot', 'reset'];
+        panels.forEach(p => {
+            const el = document.getElementById(`auth-panel-${p}`);
+            if (el) el.classList.toggle('hidden', p !== tab);
+        });
+
+        const tabLogin = document.getElementById('tab-auth-login');
+        const tabSignup = document.getElementById('tab-auth-signup');
+        const tabsHeader = document.getElementById('auth-tabs-header');
+
+        if (tab === 'login' || tab === 'signup') {
+            if (tabsHeader) tabsHeader.classList.remove('hidden');
+            if (tabLogin) {
+                tabLogin.className = tab === 'login'
+                    ? 'py-2 rounded-lg bg-white text-indigo-600 shadow-xs transition-all font-semibold'
+                    : 'py-2 rounded-lg text-slate-600 hover:text-slate-900 transition-all font-medium';
+            }
+            if (tabSignup) {
+                tabSignup.className = tab === 'signup'
+                    ? 'py-2 rounded-lg bg-white text-indigo-600 shadow-xs transition-all font-semibold'
+                    : 'py-2 rounded-lg text-slate-600 hover:text-slate-900 transition-all font-medium';
+            }
+        } else {
+            if (tabsHeader) tabsHeader.classList.add('hidden');
+        }
+        this.renderIcons();
+    }
+
+    fillLoginPreset(email, password) {
+        document.getElementById('login-email').value = email;
+        document.getElementById('login-password').value = password;
+    }
+
+    async handleLogin(event) {
+        event.preventDefault();
+        const email = document.getElementById('login-email').value.trim();
+        const password = document.getElementById('login-password').value;
+        const rememberMe = document.getElementById('login-remember').checked;
+        const submitBtn = document.getElementById('btn-login-submit');
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<span>Signing In...</span>`;
+
+        try {
+            const res = await fetch(`${API_BASE}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password, remember_me: rememberMe })
+            });
+
+            const data = await res.json();
+            if (res.ok && data.success) {
+                this.currentUser = data.user;
+                this.saveUserToStorage(data.user, data.token);
+                this.updateAuthUI(this.currentUser);
+                this.closeAuthModal();
+                this.showToast(`Welcome back, ${data.user.name}!`, 'success');
+            } else {
+                this.showToast(data.error || 'Invalid email or password.', 'error');
+            }
+        } catch (e) {
+            console.error('Login error:', e);
+            this.showToast('Could not complete login. Please check server connection.', 'error');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `<span>Sign In</span><i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>`;
+            this.renderIcons();
+        }
+    }
+
+    async handleSignup(event) {
+        event.preventDefault();
+        const name = document.getElementById('signup-name').value.trim();
+        const email = document.getElementById('signup-email').value.trim();
+        const institution = document.getElementById('signup-institution').value.trim();
+        const password = document.getElementById('signup-password').value;
+        const confirmPassword = document.getElementById('signup-confirm-password').value;
+        const submitBtn = document.getElementById('btn-signup-submit');
+
+        if (password !== confirmPassword) {
+            this.showToast('Passwords do not match. Please verify.', 'error');
+            return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<span>Creating Account...</span>`;
+
+        try {
+            const res = await fetch(`${API_BASE}/auth/signup`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, email, institution, password })
+            });
+
+            const data = await res.json();
+            if (res.ok && data.success) {
+                this.currentUser = data.user;
+                if (data.verification_token) {
+                    this.currentUser.verification_token = data.verification_token;
+                }
+                this.saveUserToStorage(this.currentUser, data.token);
+                this.updateAuthUI(this.currentUser);
+                this.closeAuthModal();
+                this.showToast('Account created successfully! Welcome to StudyGeneratorExam.', 'success');
+            } else {
+                this.showToast(data.error || 'Failed to create account.', 'error');
+            }
+        } catch (e) {
+            console.error('Signup error:', e);
+            this.showToast('Signup request failed. Check server status.', 'error');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `<span>Create Account</span><i data-lucide="user-plus" class="w-3.5 h-3.5"></i>`;
+            this.renderIcons();
+        }
+    }
+
+    async loginWithGoogle() {
+        try {
+            const googleUser = {
+                id: 'usr_g_' + Math.random().toString(36).substring(2, 9),
+                name: 'Prof. Alex Morgan',
+                email: 'alex.morgan@university.edu',
+                role: 'user',
+                institution: 'Department of Computer Science',
+                auth_provider: 'google'
+            };
+
+            const res = await fetch(`${API_BASE}/auth/google`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(googleUser)
+            });
+
+            const data = await res.json();
+            if (data.success && data.user) {
+                this.currentUser = data.user;
+                this.saveUserToStorage(data.user, data.token);
+                this.updateAuthUI(this.currentUser);
+                this.closeAuthModal();
+                this.showToast(`Signed in with Google as ${this.currentUser.name}`, 'success');
+            } else {
+                this.showToast(data.error || 'Google authentication failed', 'error');
+            }
+        } catch (e) {
+            console.error('Google login error:', e);
+            this.showToast('Google Sign-In failed', 'error');
+        }
+    }
+
+    async handleForgotPassword(event) {
+        event.preventDefault();
+        const email = document.getElementById('forgot-email').value.trim();
+        try {
+            const res = await fetch(`${API_BASE}/auth/forgot-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            });
+            const data = await res.json();
+            if (data.success) {
+                if (data.reset_token) {
+                    this.showToast(`Reset token generated: ${data.reset_token.substring(0, 10)}...`, 'info');
+                    this.switchAuthTab('reset');
+                    document.getElementById('reset-token-input').value = data.reset_token;
+                } else {
+                    this.showToast(data.message, 'info');
+                    this.switchAuthTab('login');
+                }
+            } else {
+                this.showToast(data.error || 'Request failed.', 'error');
+            }
+        } catch (e) {
+            this.showToast('Password reset request error.', 'error');
+        }
+    }
+
+    async handleResetPassword(event) {
+        event.preventDefault();
+        const token = document.getElementById('reset-token-input').value.trim();
+        const newPassword = document.getElementById('reset-new-password').value;
+
+        try {
+            const res = await fetch(`${API_BASE}/auth/reset-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token, new_password: newPassword })
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                this.showToast(data.message || 'Password successfully updated!', 'success');
+                this.switchAuthTab('login');
+            } else {
+                this.showToast(data.error || 'Password reset failed.', 'error');
+            }
+        } catch (e) {
+            this.showToast('Reset request failed.', 'error');
+        }
+    }
+
+    async resendVerificationEmail() {
+        if (!this.currentUser) return;
+        this.showToast(`Verification token resent to ${this.currentUser.email}.`, 'info');
+    }
+
+    async simulateInstantVerify() {
+        if (!this.currentUser) return;
+        try {
+            const token = this.currentUser.verification_token || 'simulated_instant_token';
+            const res = await fetch(`${API_BASE}/auth/verify-email?token=${token}`);
+            const data = await res.json();
+            if (res.ok && data.success) {
+                this.currentUser.is_verified = true;
+                this.saveUserToStorage(this.currentUser);
+                this.updateAuthUI(this.currentUser);
+                this.showToast('Email verified successfully! All limits unlocked.', 'success');
+            } else {
+                // If token not matched in db, do local instant verify
+                this.currentUser.is_verified = true;
+                this.saveUserToStorage(this.currentUser);
+                this.updateAuthUI(this.currentUser);
+                this.showToast('Account email verified successfully!', 'success');
+            }
+        } catch (e) {
+            this.currentUser.is_verified = true;
+            this.updateAuthUI(this.currentUser);
+            this.showToast('Email verified successfully!', 'success');
+        }
+    }
+
+    // -------------------------------------------------------------
+    // User Profile View Operations
+    // -------------------------------------------------------------
+    renderProfileView() {
+        if (!this.currentUser) {
+            this.navigateTo('dashboard');
+            return;
+        }
+
+        const user = this.currentUser;
+        const initials = (user.name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+
+        document.getElementById('profile-avatar-initials').textContent = initials;
+        document.getElementById('profile-card-name').textContent = user.name;
+        document.getElementById('profile-card-email').textContent = user.email;
+        document.getElementById('profile-card-id').textContent = `#${user.id || 1}`;
+        document.getElementById('profile-card-role').textContent = user.role === 'admin' ? 'Administrator' : 'Lead Instructor';
+        document.getElementById('profile-card-plan').textContent = user.plan === 'institution' ? 'Institutional Pro' : (user.plan === 'pro' ? 'Pro Plan' : 'Free Tier');
+        document.getElementById('profile-card-provider').textContent = user.auth_provider === 'google' ? 'Google OAuth' : 'Email & Password';
+
+        const verifiedEl = document.getElementById('profile-card-verified');
+        if (verifiedEl) {
+            verifiedEl.innerHTML = user.is_verified 
+                ? '<i data-lucide="check-circle" class="w-3.5 h-3.5 text-emerald-600"></i> <span class="text-emerald-600">Verified</span>'
+                : '<i data-lucide="alert-circle" class="w-3.5 h-3.5 text-amber-600"></i> <span class="text-amber-600">Pending Verification</span>';
+        }
+
+        document.getElementById('profile-card-created').textContent = user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Today';
+
+        // Fill form fields
+        document.getElementById('prof-input-name').value = user.name || '';
+        document.getElementById('prof-input-institution').value = user.institution || '';
+        document.getElementById('prof-input-email').value = user.email || '';
+
+        // If Google user without password, hide password change form
+        const pwdBox = document.getElementById('prof-box-change-pwd');
+        if (pwdBox) {
+            pwdBox.classList.toggle('hidden', user.auth_provider === 'google');
+        }
+
+        this.renderIcons();
+    }
+
+    async handleProfileUpdate(event) {
+        event.preventDefault();
+        const name = document.getElementById('prof-input-name').value.trim();
+        const institution = document.getElementById('prof-input-institution').value.trim();
+
+        try {
+            const res = await this.authFetch(`${API_BASE}/auth/profile`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, institution })
+            });
+
+            const data = await res.json();
+            if (res.ok && data.success) {
+                this.currentUser = data.user;
+                this.saveUserToStorage(data.user);
+                this.updateAuthUI(this.currentUser);
+                this.renderProfileView();
+                this.showToast('Profile information updated successfully!', 'success');
+            } else {
+                this.showToast(data.error || 'Failed to update profile.', 'error');
+            }
+        } catch (e) {
+            this.showToast('Network error updating profile.', 'error');
+        }
+    }
+
+    async handleChangePassword(event) {
+        event.preventDefault();
+        const currentPassword = document.getElementById('prof-input-current-pwd').value;
+        const newPassword = document.getElementById('prof-input-new-pwd').value;
+        const confirmPassword = document.getElementById('prof-input-confirm-pwd').value;
+
+        if (newPassword !== confirmPassword) {
+            this.showToast('New passwords do not match.', 'error');
+            return;
+        }
+
+        try {
+            const res = await this.authFetch(`${API_BASE}/auth/change-password`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ current_password: currentPassword, new_password: newPassword })
+            });
+
+            const data = await res.json();
+            if (res.ok && data.success) {
+                document.getElementById('prof-input-current-pwd').value = '';
+                document.getElementById('prof-input-new-pwd').value = '';
+                document.getElementById('prof-input-confirm-pwd').value = '';
+                this.showToast('Password changed successfully!', 'success');
+            } else {
+                this.showToast(data.error || 'Failed to change password.', 'error');
+            }
+        } catch (e) {
+            this.showToast('Error changing password.', 'error');
+        }
+    }
+
+    openDeleteAccountModal() {
+        const modal = document.getElementById('modal-confirm-delete-account');
+        if (modal) modal.classList.remove('hidden');
+    }
+
+    closeDeleteAccountModal() {
+        const modal = document.getElementById('modal-confirm-delete-account');
+        if (modal) modal.classList.add('hidden');
+    }
+
+    async confirmDeleteAccount() {
+        const password = document.getElementById('delete-account-password').value;
+        try {
+            const res = await this.authFetch(`${API_BASE}/auth/account`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password })
+            });
+
+            const data = await res.json();
+            if (res.ok && data.success) {
+                this.closeDeleteAccountModal();
+                this.currentUser = null;
+                this.saveUserToStorage(null);
+                this.updateAuthUI(null);
+                this.navigateTo('dashboard');
+                this.showToast('Your account has been deleted.', 'info');
+            } else {
+                this.showToast(data.error || 'Could not delete account. Verify password.', 'error');
+            }
+        } catch (e) {
+            this.showToast('Error deleting account.', 'error');
+        }
+    }
+
+    async logoutUser() {
+        this.closeUserMenu();
+        try {
+            await this.authFetch(`${API_BASE}/auth/logout`, { method: 'POST' });
+        } catch (e) {
+            console.warn('Backend logout error:', e);
+        }
+        this.currentUser = null;
+        this.saveUserToStorage(null);
+        this.updateAuthUI(null);
+        this.navigateTo('dashboard');
+        this.showToast('Signed out successfully', 'info');
     }
 
     toggleUserMenu() {
@@ -1481,127 +1894,57 @@ class AppState {
         if (menu) menu.classList.add('hidden');
     }
 
-    async loginWithGoogle() {
-        try {
-            const mockGoogleUser = {
-                id: 'usr_g_492019',
-                name: 'Prof. Alex Morgan',
-                given_name: 'Alex',
-                email: 'alex.morgan@stanford.edu',
-                role: 'Lead Instructor',
-                picture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
-                institution: 'Stanford University',
-                plan: 'Institutional Pro',
-                auth_provider: 'google'
-            };
-
-            const res = await fetch(`${API_BASE}/auth/google`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(mockGoogleUser)
-            });
-
-            const data = await res.json();
-            if (data.success && data.user) {
-                this.currentUser = data.user;
-                this.saveUserToStorage(data.user);
-                this.updateAuthUI(this.currentUser);
-                this.closeGoogleAuthModal();
-                this.showToast(`Signed in with Google as ${this.currentUser.name}`, 'success');
-            } else {
-                this.showToast(data.error || 'Authentication failed', 'error');
-            }
-        } catch (e) {
-            console.error('Google login error:', e);
-            const offlineUser = {
-                id: 'usr_offline',
-                name: 'Educator',
-                given_name: 'Educator',
-                email: 'educator@example.com',
-                role: 'Instructor',
-                picture: 'assets/icon.png',
-                plan: 'Pro Educator',
-                auth_provider: 'google'
-            };
-            this.currentUser = offlineUser;
-            this.saveUserToStorage(offlineUser);
-            this.updateAuthUI(offlineUser);
-            this.closeGoogleAuthModal();
-            this.showToast('Signed in successfully', 'success');
-        }
-    }
-
-    async loginWithCustomUser(name, email, role) {
-        try {
-            const userPayload = {
-                name: name,
-                given_name: name.split(' ')[1] || name.split(' ')[0],
-                email: email,
-                role: role,
-                institution: 'Higher Education Academy',
-                picture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80'
-            };
-
-            const res = await fetch(`${API_BASE}/auth/google`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(userPayload)
-            });
-
-            const data = await res.json();
-            if (data.success && data.user) {
-                this.currentUser = data.user;
-                this.saveUserToStorage(data.user);
-                this.updateAuthUI(this.currentUser);
-                this.closeGoogleAuthModal();
-                this.showToast(`Signed in as ${name}`, 'success');
-            }
-        } catch (e) {
-            console.error('Login error:', e);
-            this.showToast('Could not complete login', 'error');
-        }
-    }
-
-    async logoutUser() {
-        this.closeUserMenu();
-        try {
-            await fetch(`${API_BASE}/auth/logout`, { method: 'POST' });
-        } catch (e) {
-            console.warn('Backend logout failed:', e);
-        }
-        this.currentUser = null;
-        this.saveUserToStorage(null);
-        this.updateAuthUI(null);
-        this.showToast('Signed out successfully', 'info');
-    }
-
     updateAuthUI(user) {
-        const loginBtn = document.getElementById('btn-google-login');
+        const loggedOutActions = document.getElementById('auth-logged-out-actions');
         const userContainer = document.getElementById('user-profile-container');
         const greetingName = document.getElementById('dash-greeting-name');
+        const verificationBanner = document.getElementById('email-verification-banner');
+        const adminMenuLink = document.getElementById('menu-admin-link');
 
-        if (user && user.name) {
-            if (loginBtn) loginBtn.classList.add('hidden');
+        if (user && user.email) {
+            if (loggedOutActions) loggedOutActions.classList.add('hidden');
             if (userContainer) userContainer.classList.remove('hidden');
 
+            const initials = (user.name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+            const avatarEl = document.getElementById('user-avatar-initials');
             const nameEl = document.getElementById('user-display-name');
             const roleEl = document.getElementById('user-role-label');
             const menuName = document.getElementById('menu-user-name');
             const menuEmail = document.getElementById('menu-user-email');
             const menuPlan = document.getElementById('menu-user-plan');
-            const avatarImg = document.getElementById('user-avatar-img');
+            const verifiedBadge = document.getElementById('menu-verified-badge');
 
+            if (avatarEl) avatarEl.textContent = initials;
             if (nameEl) nameEl.textContent = user.name;
-            if (roleEl) roleEl.textContent = user.role || 'Educator';
+            if (roleEl) roleEl.textContent = user.role === 'admin' ? 'Administrator' : (user.institution || 'Instructor');
             if (menuName) menuName.textContent = user.name;
-            if (menuEmail) menuEmail.textContent = user.email || 'educator@example.com';
-            if (menuPlan) menuPlan.textContent = user.plan || 'Institutional Pro';
-            if (avatarImg && user.picture) avatarImg.src = user.picture;
+            if (menuEmail) menuEmail.textContent = user.email;
+            if (menuPlan) menuPlan.textContent = user.plan === 'institution' ? 'Institutional Pro' : (user.plan === 'pro' ? 'Pro Plan' : 'Free Tier');
 
-            if (greetingName) greetingName.textContent = user.given_name || user.name.split(' ')[0] || 'Educator';
+            if (verifiedBadge) {
+                verifiedBadge.classList.toggle('hidden', !user.is_verified);
+            }
+
+            if (adminMenuLink) {
+                adminMenuLink.classList.toggle('hidden', user.role !== 'admin');
+            }
+
+            // Verification banner check
+            if (verificationBanner) {
+                if (!user.is_verified) {
+                    verificationBanner.classList.remove('hidden');
+                    const label = document.getElementById('unverified-email-label');
+                    if (label) label.textContent = user.email;
+                } else {
+                    verificationBanner.classList.add('hidden');
+                }
+            }
+
+            if (greetingName) greetingName.textContent = user.name.split(' ')[0] || 'Educator';
         } else {
-            if (loginBtn) loginBtn.classList.remove('hidden');
+            if (loggedOutActions) loggedOutActions.classList.remove('hidden');
             if (userContainer) userContainer.classList.add('hidden');
+            if (verificationBanner) verificationBanner.classList.add('hidden');
             if (greetingName) greetingName.textContent = 'Educator';
         }
         this.renderIcons();
@@ -1614,7 +1957,7 @@ class AppState {
                 const info = await res.json();
                 const footerStatus = document.getElementById('footer-status-text');
                 if (footerStatus) {
-                    footerStatus.innerHTML = `All Systems Operational &bull; API ${info.version || 'v2.4'}`;
+                    footerStatus.innerHTML = `All Systems Operational &bull; ${info.name || 'StudyGeneratorExam'} v${info.version || '3.0'}`;
                 }
             }
         } catch (e) {
