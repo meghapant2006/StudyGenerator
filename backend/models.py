@@ -161,10 +161,12 @@ class Exam:
     pdf_id: Optional[int] = None
     title: str = ""
     description: str = ""
-    source_type: str = "pdf"  # pdf, text, topic
-    source_ref: str = ""  # Document name or prompt topic
+    source_type: str = "pdf"  # pdf, text, topic, url
+    source_ref: str = ""  # Document name, URL, or prompt topic
     difficulty: str = "medium"  # easy, medium, hard, mixed
     target_audience: str = "General"  # High School, College, Professional, etc.
+    subject: str = "General"  # Computer Science, Mathematics, Biology, etc.
+    language: str = "English"  # English, Hindi, Spanish, etc.
     time_limit: int = 0  # Time limit in minutes (0 = untimed)
     passing_score: float = 70.0  # Passing percentage
     total_points: float = 0.0
@@ -191,6 +193,8 @@ class Exam:
             'source_ref': self.source_ref or '',
             'difficulty': self.difficulty or 'medium',
             'target_audience': self.target_audience or 'General',
+            'subject': self.subject or 'General',
+            'language': self.language or 'English',
             'time_limit': int(self.time_limit or 0),
             'passing_score': float(self.passing_score or 70.0),
             'total_points': float(self.total_points or (len(self.questions) if self.questions else 0)),
@@ -216,6 +220,8 @@ class Exam:
             source_ref=data.get('source_ref', ''),
             difficulty=data.get('difficulty', 'medium'),
             target_audience=data.get('target_audience', 'General'),
+            subject=data.get('subject', 'General'),
+            language=data.get('language', 'English'),
             time_limit=int(data.get('time_limit', 0)),
             passing_score=float(data.get('passing_score', 70.0)),
             total_points=float(data.get('total_points', 0.0)),
@@ -302,6 +308,21 @@ class ExamAttempt:
                         self.feedback[q_id_str] = {'score': q_pts, 'feedback': 'Correct!'}
                     else:
                         self.feedback[q_id_str] = {'score': 0.0, 'feedback': 'Incorrect.'}
+                elif q.question_type == 'fill_blank':
+                    clean_user = str(user_ans).strip().lower()
+                    clean_corr = str(q.correct_answer or '').strip().lower()
+                    is_correct = (clean_user == clean_corr and clean_user != '')
+                    if not is_correct and q.answers:
+                        for a in q.answers:
+                            ans_txt = (a.text if isinstance(a, Answer) else str(a.get('text', ''))).strip().lower()
+                            if clean_user == ans_txt and ans_txt != '':
+                                is_correct = True
+                                break
+                    if is_correct:
+                        earned += q_pts
+                        self.feedback[q_id_str] = {'score': q_pts, 'feedback': 'Correct fill-in-the-blank answer!'}
+                    else:
+                        self.feedback[q_id_str] = {'score': 0.0, 'feedback': f"Incorrect. Correct answer: '{q.correct_answer}'"}
                 elif q.question_type == 'short_answer':
                     # Basic comparison if model answer exists
                     if q.correct_answer and user_ans and str(user_ans).strip().lower() == str(q.correct_answer).strip().lower():

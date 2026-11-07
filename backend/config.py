@@ -24,7 +24,7 @@ DEBUG = True
 
 # File upload settings
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
-ALLOWED_EXTENSIONS = {'pdf', 'txt'}
+ALLOWED_EXTENSIONS = {'pdf', 'docx', 'txt'}
 
 # PDF extraction settings
 USE_OCR = True  # Enable OCR for scanned PDFs

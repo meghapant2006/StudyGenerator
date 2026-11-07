@@ -239,6 +239,137 @@ def extract_pdf_sections(pdf_path: str) -> List[Dict]:
     return sections
 
 
+def extract_docx_text(docx_path: str) -> Tuple[Dict[int, str], Dict[str, Any]]:
+    """
+    Extract text from Microsoft Word (.docx) documents
+    
+    Args:
+        docx_path: Path to DOCX file
+        
+    Returns:
+        Tuple of (page_text_dict, summary_dict)
+    """
+    import docx
+    
+    doc = docx.Document(docx_path)
+    paragraphs = []
+    
+    for p in doc.paragraphs:
+        txt = p.text.strip()
+        if txt:
+            paragraphs.append(txt)
+            
+    for table in doc.tables:
+        for row in table.rows:
+            row_text = [cell.text.strip() for cell in row.cells if cell.text.strip()]
+            if row_text:
+                paragraphs.append(" | ".join(row_text))
+                
+    full_text = "\n\n".join(paragraphs)
+    words = full_text.split()
+    total_words = len(words)
+    total_chars = len(full_text)
+    
+    # Chunk into pages of ~450 words
+    words_per_page = 450
+    text_data: Dict[int, str] = {}
+    
+    if total_words == 0:
+        text_data[1] = "Empty document"
+        total_pages = 1
+    else:
+        page_idx = 1
+        for i in range(0, total_words, words_per_page):
+            chunk = " ".join(words[i:i + words_per_page])
+            text_data[page_idx] = chunk
+            page_idx += 1
+        total_pages = len(text_data)
+        
+    summary = {
+        'total_pages': total_pages,
+        'pages_with_text': total_pages,
+        'total_characters': total_chars,
+        'total_words': total_words,
+        'ocr_used': False,
+        'avg_words_per_page': round(total_words / max(1, total_pages), 1),
+        'file_type': 'docx'
+    }
+    
+    logger.info(f"Extracted {total_words} words from DOCX ({total_pages} logical pages)")
+    return text_data, summary
+
+
+def scrape_url_content(url: str) -> Tuple[str, str, Dict[str, Any]]:
+    """
+    Fetch and clean text from any educational/article URL
+    
+    Args:
+        url: Web URL to scrape
+        
+    Returns:
+        Tuple of (title, clean_text, summary_dict)
+    """
+    from bs4 import BeautifulSoup
+    import urllib.request
+    import urllib.parse
+    import re
+    
+    parsed = urllib.parse.urlparse(url)
+    if not parsed.scheme or not parsed.netloc:
+        raise ValueError("Invalid URL format. Include http:// or https://")
+        
+    req = urllib.request.Request(
+        url,
+        headers={
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+        }
+    )
+    
+    with urllib.request.urlopen(req, timeout=12) as response:
+        content_type = response.headers.get('Content-Type', '')
+        charset = 'utf-8'
+        if 'charset=' in content_type:
+            charset = content_type.split('charset=')[-1].split(';')[0].strip()
+        raw_html = response.read().decode(charset, errors='replace')
+        
+    soup = BeautifulSoup(raw_html, 'html.parser')
+    
+    title = ""
+    if soup.title and soup.title.string:
+        title = soup.title.string.strip()
+    elif soup.find('h1'):
+        title = soup.find('h1').get_text(strip=True)
+    if not title:
+        title = parsed.netloc
+        
+    # Remove clutter elements
+    for el in soup(['script', 'style', 'nav', 'header', 'footer', 'noscript', 'aside', 'svg', 'iframe', 'form']):
+        el.decompose()
+        
+    # Prefer main content containers if present
+    main_el = soup.find('article') or soup.find('main') or soup.find(id=re.compile(r'content|main|article', re.I)) or soup.body
+    
+    if main_el:
+        text = main_el.get_text(separator='\n', strip=True)
+    else:
+        text = soup.get_text(separator='\n', strip=True)
+        
+    # Clean redundant whitespace
+    text = re.sub(r'\n{3,}', '\n\n', text).strip()
+    words = text.split()
+    
+    summary = {
+        'url': url,
+        'title': title,
+        'total_words': len(words),
+        'total_characters': len(text)
+    }
+    
+    logger.info(f"Scraped URL {url}: '{title}' ({len(words)} words)")
+    return title, text, summary
+
+
 # Testing function
 if __name__ == "__main__":
     import sys

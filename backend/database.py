@@ -197,6 +197,8 @@ class Database:
                 'source_ref': 'TEXT DEFAULT ""',
                 'difficulty': 'TEXT DEFAULT "medium"',
                 'target_audience': 'TEXT DEFAULT "General"',
+                'subject': 'TEXT DEFAULT "General"',
+                'language': 'TEXT DEFAULT "English"',
                 'time_limit': 'INTEGER DEFAULT 0',
                 'passing_score': 'REAL DEFAULT 70.0',
                 'total_points': 'REAL DEFAULT 0.0',
@@ -319,9 +321,9 @@ class Database:
             
             cursor.execute("""
                 INSERT INTO exams (pdf_id, title, description, source_type, source_ref,
-                                 difficulty, target_audience, time_limit, passing_score,
+                                 difficulty, target_audience, subject, language, time_limit, passing_score,
                                  total_points, created_date, num_questions)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 exam.pdf_id,
                 exam.title,
@@ -330,6 +332,8 @@ class Database:
                 exam.source_ref or '',
                 exam.difficulty or 'medium',
                 exam.target_audience or 'General',
+                getattr(exam, 'subject', 'General') or 'General',
+                getattr(exam, 'language', 'English') or 'English',
                 int(exam.time_limit or 0),
                 float(exam.passing_score or 70.0),
                 float(total_points),
@@ -397,6 +401,17 @@ class Database:
                     order_index=int(q_row['order_index'] or 0)
                 ))
             
+            subject_val = 'General'
+            language_val = 'English'
+            try:
+                subject_val = exam_row['subject'] or 'General'
+            except (KeyError, IndexError):
+                pass
+            try:
+                language_val = exam_row['language'] or 'English'
+            except (KeyError, IndexError):
+                pass
+
             return Exam(
                 id=exam_row['id'],
                 pdf_id=exam_row['pdf_id'],
@@ -406,6 +421,8 @@ class Database:
                 source_ref=exam_row['source_ref'] or '',
                 difficulty=exam_row['difficulty'] or 'medium',
                 target_audience=exam_row['target_audience'] or 'General',
+                subject=subject_val,
+                language=language_val,
                 time_limit=int(exam_row['time_limit'] or 0),
                 passing_score=float(exam_row['passing_score'] or 70.0),
                 total_points=float(exam_row['total_points'] or 0.0),
@@ -413,6 +430,31 @@ class Database:
                 num_questions=len(questions),
                 questions=questions
             )
+
+    def reorder_questions(self, exam_id: int, question_ids: List[int]) -> bool:
+        """Update order_index of questions for an exam to persist new ordering"""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            for idx, q_id in enumerate(question_ids):
+                cursor.execute("""
+                    UPDATE questions
+                    SET order_index = ?
+                    WHERE id = ? AND exam_id = ?
+                """, (idx, int(q_id), int(exam_id)))
+            conn.commit()
+            logger.info(f"Reordered {len(question_ids)} questions for exam {exam_id}")
+            return True
+
+    def recalculate_exam_points(self, exam_id: int) -> float:
+        """Recalculate and update exam total_points from its questions"""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT SUM(points) as total FROM questions WHERE exam_id = ?", (exam_id,))
+            row = cursor.fetchone()
+            total = float(row['total'] or 0.0) if row else 0.0
+            cursor.execute("UPDATE exams SET total_points = ? WHERE id = ?", (total, exam_id))
+            conn.commit()
+            return total
 
     def update_exam(self, exam_id: int, data: Dict[str, Any]) -> bool:
         """Update exam metadata"""

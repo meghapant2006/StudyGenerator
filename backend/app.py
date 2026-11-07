@@ -28,7 +28,7 @@ from config import (
     ALLOWED_EXTENSIONS, DEFAULT_NUM_QUESTIONS, MIN_QUESTIONS, MAX_QUESTIONS,
     AI_GEMINI_KEY, AI_OPENAI_KEY, DEFAULT_AI_PROVIDER
 )
-from pdf_extractor import extract_pdf_text, PDFExtractor
+from pdf_extractor import extract_pdf_text, extract_docx_text, scrape_url_content, PDFExtractor
 from ai_generator import AIQuestionGenerator
 from database import Database
 from models import PDFDocument, Exam, Question, Answer, ExamAttempt, User
@@ -511,6 +511,10 @@ def upload_file():
             text_data, summary = extract_pdf_text(str(file_path))
             ocr_used = summary.get('ocr_used', False)
             total_pages = summary.get('total_pages', 1)
+        elif ext == 'docx':
+            text_data, summary = extract_docx_text(str(file_path))
+            ocr_used = False
+            total_pages = summary.get('total_pages', 1)
         else:
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
@@ -521,7 +525,8 @@ def upload_file():
                 'total_characters': len(content),
                 'total_words': len(content.split()),
                 'ocr_used': False,
-                'avg_words_per_page': len(content.split())
+                'avg_words_per_page': len(content.split()),
+                'file_type': 'txt'
             }
             ocr_used = False
             total_pages = 1
@@ -553,6 +558,34 @@ def upload_file():
         return jsonify({'error': str(e)}), 500
 
 
+# Web URL Scraper Endpoint
+@app.route('/api/scrape-url', methods=['POST'])
+def scrape_url_endpoint():
+    """Scrape educational article/web content from a URL"""
+    try:
+        data = request.get_json() or {}
+        url = data.get('url', '').strip()
+        if not url:
+            return jsonify({'error': 'URL is required'}), 400
+        if not url.startswith(('http://', 'https://')):
+            url = 'https://' + url
+            
+        title, text, summary = scrape_url_content(url)
+        if not text or len(text.strip()) < 40:
+            return jsonify({'error': 'Insufficient textual content could be extracted from this webpage.'}), 400
+            
+        return jsonify({
+            'success': True,
+            'title': title,
+            'content': text,
+            'summary': summary,
+            'preview_text': text[:600]
+        })
+    except Exception as e:
+        logger.error(f"URL scraping failed for {url if 'url' in locals() else 'unknown'}: {e}")
+        return jsonify({'error': f"Failed to extract webpage content: {str(e)}"}), 500
+
+
 # Exam Generation
 @app.route('/api/generate-exam', methods=['POST'])
 @app.route('/api/generate', methods=['POST'])
@@ -570,6 +603,8 @@ def generate_exam():
         title = data.get('title', '').strip()
         difficulty = data.get('difficulty', 'medium')
         target_audience = data.get('target_audience', 'General')
+        subject = data.get('subject', 'General')
+        language = data.get('language', 'English')
         time_limit = int(data.get('time_limit', 0))
         passing_score = float(data.get('passing_score', 70.0))
         
@@ -619,6 +654,18 @@ def generate_exam():
             source_ref = topic
             if not title:
                 title = f"Assessment: {topic}"
+
+        elif source_type == 'url':
+            url = (data.get('url') or data.get('source_ref') or '').strip()
+            raw_content = (data.get('raw_text') or data.get('content') or '').strip()
+            if not raw_content and url:
+                _, raw_content, _ = scrape_url_content(url)
+            if not raw_content:
+                return jsonify({'error': 'Valid content is required for URL source'}), 400
+            content_for_ai = raw_content
+            source_ref = url or "Web Article"
+            if not title:
+                title = f"Exam from Web Content"
         else:
             return jsonify({'error': f'Unsupported source_type: {source_type}'}), 400
 
@@ -629,7 +676,9 @@ def generate_exam():
             question_config=q_config,
             difficulty=difficulty,
             target_audience=target_audience,
-            source_type=source_type
+            source_type=source_type,
+            subject=subject,
+            language=language
         )
         
         if not questions:
@@ -644,6 +693,8 @@ def generate_exam():
             source_ref=source_ref,
             difficulty=difficulty,
             target_audience=target_audience,
+            subject=subject,
+            language=language,
             time_limit=time_limit,
             passing_score=passing_score,
             questions=questions
