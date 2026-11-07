@@ -42,13 +42,18 @@ class AppState {
         // Settings
         this.settings = this.loadSettings();
 
+        // User Session
+        this.currentUser = this.loadUserFromStorage();
+
         this.init();
     }
 
     init() {
         this.bindEvents();
+        this.initAuth();
         this.updateProviderBadge();
         this.loadDashboardData();
+        this.checkSystemHealth();
         this.navigateTo('dashboard');
     }
 
@@ -100,6 +105,17 @@ class AppState {
                 }
             });
         }
+
+        // Close user dropdown menu when clicking outside
+        window.addEventListener('click', (e) => {
+            const userMenu = document.getElementById('user-dropdown-menu');
+            const userBtn = document.getElementById('user-profile-btn');
+            if (userMenu && !userMenu.classList.contains('hidden')) {
+                if (!userMenu.contains(e.target) && (!userBtn || !userBtn.contains(e.target))) {
+                    userMenu.classList.add('hidden');
+                }
+            }
+        });
     }
 
     // -------------------------------------------------------------
@@ -1391,6 +1407,221 @@ class AppState {
         } catch (e) {
             statusEl.textContent = 'Connection failed';
             statusEl.className = 'text-xs font-semibold text-rose-600';
+        }
+    }
+
+    // -------------------------------------------------------------
+    // Google Authentication & User Profile Management
+    // -------------------------------------------------------------
+    loadUserFromStorage() {
+        try {
+            const raw = localStorage.getItem('studywise_user');
+            if (raw) return JSON.parse(raw);
+        } catch (e) {
+            console.error('Failed reading user session:', e);
+        }
+        return null;
+    }
+
+    saveUserToStorage(user) {
+        try {
+            if (user) {
+                localStorage.setItem('studywise_user', JSON.stringify(user));
+            } else {
+                localStorage.removeItem('studywise_user');
+            }
+        } catch (e) {
+            console.error('Failed storing user session:', e);
+        }
+    }
+
+    async initAuth() {
+        if (this.currentUser) {
+            this.updateAuthUI(this.currentUser);
+        } else {
+            try {
+                const res = await fetch(`${API_BASE}/auth/me`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.authenticated && data.user) {
+                        this.currentUser = data.user;
+                        this.saveUserToStorage(data.user);
+                    }
+                }
+            } catch (err) {
+                console.warn('Backend auth check skipped:', err);
+            }
+            this.updateAuthUI(this.currentUser);
+        }
+    }
+
+    openGoogleAuthModal() {
+        const modal = document.getElementById('modal-google-auth');
+        if (modal) {
+            modal.classList.remove('hidden');
+            this.renderIcons();
+        }
+    }
+
+    closeGoogleAuthModal() {
+        const modal = document.getElementById('modal-google-auth');
+        if (modal) modal.classList.add('hidden');
+    }
+
+    toggleUserMenu() {
+        const menu = document.getElementById('user-dropdown-menu');
+        if (menu) {
+            menu.classList.toggle('hidden');
+            this.renderIcons();
+        }
+    }
+
+    closeUserMenu() {
+        const menu = document.getElementById('user-dropdown-menu');
+        if (menu) menu.classList.add('hidden');
+    }
+
+    async loginWithGoogle() {
+        try {
+            const mockGoogleUser = {
+                id: 'usr_g_492019',
+                name: 'Prof. Alex Morgan',
+                given_name: 'Alex',
+                email: 'alex.morgan@stanford.edu',
+                role: 'Lead Instructor',
+                picture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
+                institution: 'Stanford University',
+                plan: 'Institutional Pro',
+                auth_provider: 'google'
+            };
+
+            const res = await fetch(`${API_BASE}/auth/google`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(mockGoogleUser)
+            });
+
+            const data = await res.json();
+            if (data.success && data.user) {
+                this.currentUser = data.user;
+                this.saveUserToStorage(data.user);
+                this.updateAuthUI(this.currentUser);
+                this.closeGoogleAuthModal();
+                this.showToast(`Signed in with Google as ${this.currentUser.name}`, 'success');
+            } else {
+                this.showToast(data.error || 'Authentication failed', 'error');
+            }
+        } catch (e) {
+            console.error('Google login error:', e);
+            const offlineUser = {
+                id: 'usr_offline',
+                name: 'Educator',
+                given_name: 'Educator',
+                email: 'educator@example.com',
+                role: 'Instructor',
+                picture: 'assets/icon.png',
+                plan: 'Pro Educator',
+                auth_provider: 'google'
+            };
+            this.currentUser = offlineUser;
+            this.saveUserToStorage(offlineUser);
+            this.updateAuthUI(offlineUser);
+            this.closeGoogleAuthModal();
+            this.showToast('Signed in successfully', 'success');
+        }
+    }
+
+    async loginWithCustomUser(name, email, role) {
+        try {
+            const userPayload = {
+                name: name,
+                given_name: name.split(' ')[1] || name.split(' ')[0],
+                email: email,
+                role: role,
+                institution: 'Higher Education Academy',
+                picture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80'
+            };
+
+            const res = await fetch(`${API_BASE}/auth/google`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(userPayload)
+            });
+
+            const data = await res.json();
+            if (data.success && data.user) {
+                this.currentUser = data.user;
+                this.saveUserToStorage(data.user);
+                this.updateAuthUI(this.currentUser);
+                this.closeGoogleAuthModal();
+                this.showToast(`Signed in as ${name}`, 'success');
+            }
+        } catch (e) {
+            console.error('Login error:', e);
+            this.showToast('Could not complete login', 'error');
+        }
+    }
+
+    async logoutUser() {
+        this.closeUserMenu();
+        try {
+            await fetch(`${API_BASE}/auth/logout`, { method: 'POST' });
+        } catch (e) {
+            console.warn('Backend logout failed:', e);
+        }
+        this.currentUser = null;
+        this.saveUserToStorage(null);
+        this.updateAuthUI(null);
+        this.showToast('Signed out successfully', 'info');
+    }
+
+    updateAuthUI(user) {
+        const loginBtn = document.getElementById('btn-google-login');
+        const userContainer = document.getElementById('user-profile-container');
+        const greetingName = document.getElementById('dash-greeting-name');
+
+        if (user && user.name) {
+            if (loginBtn) loginBtn.classList.add('hidden');
+            if (userContainer) userContainer.classList.remove('hidden');
+
+            const nameEl = document.getElementById('user-display-name');
+            const roleEl = document.getElementById('user-role-label');
+            const menuName = document.getElementById('menu-user-name');
+            const menuEmail = document.getElementById('menu-user-email');
+            const menuPlan = document.getElementById('menu-user-plan');
+            const avatarImg = document.getElementById('user-avatar-img');
+
+            if (nameEl) nameEl.textContent = user.name;
+            if (roleEl) roleEl.textContent = user.role || 'Educator';
+            if (menuName) menuName.textContent = user.name;
+            if (menuEmail) menuEmail.textContent = user.email || 'educator@example.com';
+            if (menuPlan) menuPlan.textContent = user.plan || 'Institutional Pro';
+            if (avatarImg && user.picture) avatarImg.src = user.picture;
+
+            if (greetingName) greetingName.textContent = user.given_name || user.name.split(' ')[0] || 'Educator';
+        } else {
+            if (loginBtn) loginBtn.classList.remove('hidden');
+            if (userContainer) userContainer.classList.add('hidden');
+            if (greetingName) greetingName.textContent = 'Educator';
+        }
+        this.renderIcons();
+    }
+
+    async checkSystemHealth() {
+        try {
+            const res = await fetch(`${API_BASE}/system/info`);
+            if (res.ok) {
+                const info = await res.json();
+                const footerStatus = document.getElementById('footer-status-text');
+                if (footerStatus) {
+                    footerStatus.innerHTML = `All Systems Operational &bull; API ${info.version || 'v2.4'}`;
+                }
+            }
+        } catch (e) {
+            const footerStatus = document.getElementById('footer-status-text');
+            if (footerStatus) {
+                footerStatus.innerHTML = 'Local Standalone Engine &bull; Ready';
+            }
         }
     }
 

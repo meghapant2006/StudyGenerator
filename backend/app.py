@@ -49,6 +49,23 @@ export_service = ExportService()
 # Global storage for extracted PDF content (in-memory cache)
 pdf_content_cache = {}
 
+# User sessions & authentication store
+active_users = {
+    "default_educator": {
+        "id": "usr_demo_101",
+        "name": "Prof. Alex Morgan",
+        "given_name": "Alex",
+        "email": "alex.morgan@university.edu",
+        "role": "Lead Instructor",
+        "picture": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80",
+        "institution": "Department of Computer Science",
+        "plan": "Institutional Pro",
+        "authenticated": True,
+        "auth_provider": "google"
+    }
+}
+current_session_user = active_users["default_educator"]
+
 
 def allowed_file(filename):
     """Check if file extension is allowed"""
@@ -81,6 +98,78 @@ def health_check():
         'version': '2.4.0',
         'message': 'StudyWise Exam Generator API is running',
         'timestamp': datetime.now().isoformat()
+    })
+
+
+# Authentication & User Session Routes
+@app.route('/api/auth/me', methods=['GET'])
+def get_current_user():
+    """Get currently authenticated user or guest state"""
+    global current_session_user
+    if current_session_user:
+        return jsonify({
+            'success': True,
+            'authenticated': True,
+            'user': current_session_user
+        })
+    return jsonify({
+        'success': True,
+        'authenticated': False,
+        'user': None
+    })
+
+
+@app.route('/api/auth/google', methods=['POST'])
+def google_auth():
+    """Handle Google Login authentication payload"""
+    global current_session_user
+    try:
+        data = request.get_json() or {}
+        email = data.get('email', 'educator@example.com').strip()
+        name = data.get('name', 'Educator').strip()
+        given_name = data.get('given_name') or name.split(' ')[0]
+        picture = data.get('picture') or "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80"
+        institution = data.get('institution', 'Academic Department')
+        role = data.get('role', 'Instructor')
+
+        user_id = data.get('id') or f"usr_g_{uuid.uuid4().hex[:8]}"
+
+        user = {
+            'id': user_id,
+            'name': name,
+            'given_name': given_name,
+            'email': email,
+            'role': role,
+            'picture': picture,
+            'institution': institution,
+            'plan': 'Institutional Pro',
+            'authenticated': True,
+            'auth_provider': 'google',
+            'last_login': datetime.now().isoformat()
+        }
+
+        active_users[user_id] = user
+        current_session_user = user
+
+        return jsonify({
+            'success': True,
+            'message': f'Welcome back, {name}!',
+            'user': user
+        })
+    except Exception as e:
+        logger.error(f"Google auth error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+
+@app.route('/api/auth/logout', methods=['POST'])
+def logout_user():
+    """Sign out current user and reset session"""
+    global current_session_user
+    current_session_user = None
+    return jsonify({
+        'success': True,
+        'authenticated': False,
+        'message': 'Logged out successfully'
     })
 
 

@@ -5,10 +5,10 @@
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title>StudyWise AI - Academic Exam Generator & Assessment Platform</title>
 
-    <!-- Inter Font -->
+    <!-- Inter & Plus Jakarta Sans Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com"/>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 
     <!-- Brand Favicon & Icons -->
     <link rel="icon" type="image/png" href="assets/icon.png"/>
@@ -50,7 +50,8 @@
                         }
                     },
                     fontFamily: {
-                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        sans: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', 'sans-serif'],
+                        body: ['Inter', 'system-ui', 'sans-serif'],
                         mono: ['JetBrains Mono', 'monospace']
                     }
                 }
@@ -103,9 +104,9 @@
             </nav>
 
             <!-- Right Utility Actions -->
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2.5">
                 <!-- AI Engine Status Badge -->
-                <button id="provider-badge" onclick="appState.openSettings()" class="hidden sm:flex items-center gap-2 bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-3 py-1 rounded-full text-xs font-semibold hover:bg-emerald-100 transition-colors" title="Click to configure AI providers">
+                <button id="provider-badge" onclick="appState.openSettings()" class="hidden md:flex items-center gap-2 bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-3 py-1 rounded-full text-xs font-semibold hover:bg-emerald-100 transition-colors" title="Click to configure AI providers">
                     <span class="relative flex h-2 w-2">
                         <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
                         <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -118,9 +119,65 @@
                     <i data-lucide="settings" class="w-4 h-4"></i>
                 </button>
 
-                <!-- Educator Profile Pill -->
-                <div class="h-9 w-9 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs ring-2 ring-slate-100 border border-indigo-200 cursor-default" title="Educator Role">
-                    ED
+                <!-- Google Sign-In Button (shown when logged out) -->
+                <button id="btn-google-login" onclick="appState.openGoogleAuthModal()" class="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs px-3.5 py-1.5 rounded-full border border-slate-300 shadow-xs hover:shadow transition-all active:scale-95">
+                    <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                    </svg>
+                    <span>Sign in with Google</span>
+                </button>
+
+                <!-- User Profile Container & Dropdown (shown when logged in) -->
+                <div id="user-profile-container" class="relative hidden">
+                    <button id="user-profile-btn" onclick="appState.toggleUserMenu()" class="flex items-center gap-2 p-1 pr-2.5 rounded-full hover:bg-slate-100 border border-slate-200/80 transition-all focus:outline-none">
+                        <img id="user-avatar-img" src="assets/icon.png" alt="User Profile" class="w-7 h-7 rounded-full object-cover ring-2 ring-indigo-500/20"/>
+                        <div class="hidden lg:flex flex-col text-left">
+                            <span id="user-display-name" class="text-xs font-semibold text-slate-800 leading-tight">Prof. Alex Morgan</span>
+                            <span id="user-role-label" class="text-[10px] text-slate-500 leading-tight">Lead Instructor</span>
+                        </div>
+                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400"></i>
+                    </button>
+
+                    <!-- Dropdown Menu -->
+                    <div id="user-dropdown-menu" class="hidden absolute right-0 mt-2 w-60 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50 animate-fadeIn">
+                        <div class="px-4 py-2.5 border-b border-slate-100">
+                            <p class="text-xs font-bold text-slate-900" id="menu-user-name">Prof. Alex Morgan</p>
+                            <p class="text-[11px] text-slate-500 truncate" id="menu-user-email">alex.morgan@university.edu</p>
+                            <div class="mt-1.5 flex items-center gap-1.5">
+                                <span class="inline-block text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100" id="menu-user-plan">Institutional Pro</span>
+                                <span class="text-[10px] text-emerald-600 font-medium flex items-center gap-1">
+                                    <i data-lucide="check" class="w-2.5 h-2.5"></i> Google Synced
+                                </span>
+                            </div>
+                        </div>
+                        <div class="py-1 text-xs">
+                            <a href="#dashboard" onclick="appState.navigateTo('dashboard'); appState.closeUserMenu();" class="flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:bg-slate-50 transition-colors">
+                                <i data-lucide="layout-dashboard" class="w-4 h-4 text-slate-400"></i>
+                                <span>Assessment Dashboard</span>
+                            </a>
+                            <a href="#wizard" onclick="appState.navigateTo('wizard'); appState.closeUserMenu();" class="flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:bg-slate-50 transition-colors">
+                                <i data-lucide="plus-circle" class="w-4 h-4 text-slate-400"></i>
+                                <span>Create New Exam</span>
+                            </a>
+                            <a href="#editor" onclick="appState.navigateTo('editor'); appState.closeUserMenu();" class="flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:bg-slate-50 transition-colors">
+                                <i data-lucide="help-circle" class="w-4 h-4 text-slate-400"></i>
+                                <span>Question Bank</span>
+                            </a>
+                            <a href="#settings" onclick="appState.openSettings(); appState.closeUserMenu();" class="flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:bg-slate-50 transition-colors">
+                                <i data-lucide="sliders" class="w-4 h-4 text-slate-400"></i>
+                                <span>AI & System Settings</span>
+                            </a>
+                        </div>
+                        <div class="pt-1 border-t border-slate-100">
+                            <button onclick="appState.logoutUser()" class="w-full flex items-center gap-2.5 px-4 py-2 text-xs text-rose-600 hover:bg-rose-50 transition-colors font-medium">
+                                <i data-lucide="log-out" class="w-4 h-4"></i>
+                                <span>Sign Out</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -134,8 +191,8 @@
             <!-- Header & Action Row -->
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                    <h1 class="text-2xl lg:text-3xl font-bold text-slate-900 tracking-tight">Assessment Dashboard</h1>
-                    <p class="text-sm text-slate-500 mt-1">Create, manage, evaluate, and export academic examinations powered by AI</p>
+                    <h1 class="text-2xl lg:text-3xl font-bold text-slate-900 tracking-tight">Welcome back, <span id="dash-greeting-name" class="text-indigo-600">Educator</span>!</h1>
+                    <p class="text-sm text-slate-500 mt-1">Generate custom exams, manage questions, and export classroom-ready tests in seconds.</p>
                 </div>
                 <div class="flex items-center gap-3">
                     <button onclick="appState.navigateTo('export')" class="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium text-xs px-4 py-2.5 rounded-xl shadow-xs transition-all flex items-center gap-2">
@@ -223,8 +280,8 @@
             <!-- Quick-Start Exam Creation Banners (3 Bento Cards) -->
             <div class="space-y-4">
                 <div>
-                    <h2 class="text-lg font-bold text-slate-900 tracking-tight">Quick-Start Exam Creation</h2>
-                    <p class="text-xs text-slate-500">Select your source material to trigger intelligent exam generation</p>
+                    <h2 class="text-lg font-bold text-slate-900 tracking-tight">Create an Exam</h2>
+                    <p class="text-xs text-slate-500">Choose how you want to provide your questions and study material</p>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
                     <!-- Banner 1: Document Upload -->
@@ -234,17 +291,17 @@
                             <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
                                 <i data-lucide="file-up" class="w-6 h-6"></i>
                             </div>
-                            <h3 class="text-base font-bold text-slate-900 mb-1">From PDF or Document</h3>
+                            <h3 class="text-base font-bold text-slate-900 mb-1">From PDF or File</h3>
                             <p class="text-xs text-slate-500 leading-relaxed mb-4">
-                                Upload syllabus chapters or lecture slides with intelligent OCR text extraction.
+                                Upload textbook chapters, readings, or slides. We extract text and build the test for you.
                             </p>
                             <div class="flex flex-wrap gap-1.5 mb-5">
                                 <span class="bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full text-[11px] font-medium">PDF, TXT</span>
-                                <span class="bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full text-[11px] font-medium">OCR Fallback</span>
+                                <span class="bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full text-[11px] font-medium">Smart Extraction</span>
                             </div>
                         </div>
                         <div class="inline-flex items-center gap-1.5 text-xs text-indigo-600 group-hover:text-indigo-700 font-semibold transition-colors">
-                            <span>Upload Document</span>
+                            <span>Upload File</span>
                             <i data-lucide="arrow-right" class="w-3.5 h-3.5 transition-transform group-hover:translate-x-1"></i>
                         </div>
                     </div>
@@ -256,17 +313,17 @@
                             <div class="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
                                 <i data-lucide="graduation-cap" class="w-6 h-6"></i>
                             </div>
-                            <h3 class="text-base font-bold text-slate-900 mb-1">From Topic / Curriculum</h3>
+                            <h3 class="text-base font-bold text-slate-900 mb-1">From Any Subject or Topic</h3>
                             <p class="text-xs text-slate-500 leading-relaxed mb-4">
-                                Synthesize complete assessments directly from a subject prompt without uploading files.
+                                Enter a topic (like "World History" or "Data Structures") to generate custom questions.
                             </p>
                             <div class="flex flex-wrap gap-1.5 mb-5">
-                                <span class="bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full text-[11px] font-medium">Bloom's Taxonomy</span>
-                                <span class="bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full text-[11px] font-medium">Custom Rubrics</span>
+                                <span class="bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full text-[11px] font-medium">Any Subject</span>
+                                <span class="bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full text-[11px] font-medium">Instant Draft</span>
                             </div>
                         </div>
                         <div class="inline-flex items-center gap-1.5 text-xs text-indigo-600 group-hover:text-indigo-700 font-semibold transition-colors">
-                            <span>Enter Topic</span>
+                            <span>Enter Subject</span>
                             <i data-lucide="arrow-right" class="w-3.5 h-3.5 transition-transform group-hover:translate-x-1"></i>
                         </div>
                     </div>
@@ -278,17 +335,17 @@
                             <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
                                 <i data-lucide="clipboard-paste" class="w-6 h-6"></i>
                             </div>
-                            <h3 class="text-base font-bold text-slate-900 mb-1">From Pasted Notes</h3>
+                            <h3 class="text-base font-bold text-slate-900 mb-1">From Pasted Text</h3>
                             <p class="text-xs text-slate-500 leading-relaxed mb-4">
-                                Paste raw lecture notes, reading summaries, or textbook sections to generate tests instantly.
+                                Paste notes, textbook paragraphs, or articles directly to generate balanced questions.
                             </p>
                             <div class="flex flex-wrap gap-1.5 mb-5">
-                                <span class="bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full text-[11px] font-medium">Instant Parse</span>
-                                <span class="bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full text-[11px] font-medium">Up to 20k words</span>
+                                <span class="bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full text-[11px] font-medium">Direct Paste</span>
+                                <span class="bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full text-[11px] font-medium">Quick Preview</span>
                             </div>
                         </div>
                         <div class="inline-flex items-center gap-1.5 text-xs text-indigo-600 group-hover:text-indigo-700 font-semibold transition-colors">
-                            <span>Paste Notes</span>
+                            <span>Paste Text</span>
                             <i data-lucide="arrow-right" class="w-3.5 h-3.5 transition-transform group-hover:translate-x-1"></i>
                         </div>
                     </div>
@@ -1300,6 +1357,130 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal 5: Google Authentication -->
+    <div id="modal-google-auth" class="modal-backdrop hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+        <div class="bg-white rounded-3xl border border-slate-200 max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-6 animate-scaleIn">
+            <div class="text-center space-y-2">
+                <div class="mx-auto w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center shadow-xs">
+                    <img src="assets/icon.png" alt="StudyWise AI" class="w-8 h-8 rounded-xl object-contain"/>
+                </div>
+                <h3 class="text-xl font-bold text-slate-900 tracking-tight">Sign in with Google</h3>
+                <p class="text-xs text-slate-500">Access your saved exams, question banks, and student scores with one click.</p>
+            </div>
+
+            <!-- One-Click Google Action -->
+            <div class="space-y-3">
+                <button onclick="appState.loginWithGoogle()" class="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-sm py-3 px-4 rounded-xl border border-slate-300 shadow-sm hover:shadow transition-all active:scale-[0.98]">
+                    <svg class="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                    </svg>
+                    <span>Continue with Google</span>
+                </button>
+
+                <div class="relative flex items-center justify-center py-2">
+                    <div class="border-t border-slate-200 w-full"></div>
+                    <span class="bg-white px-3 text-[11px] font-medium text-slate-400 absolute">or select demo educator</span>
+                </div>
+
+                <!-- Fast preset accounts -->
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <button type="button" onclick="appState.loginWithCustomUser('Prof. Alex Morgan', 'alex.morgan@stanford.edu', 'Lead Instructor')" class="p-2.5 rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 text-left transition-colors">
+                        <p class="font-semibold text-slate-800">Prof. Alex Morgan</p>
+                        <p class="text-[10px] text-slate-500 truncate">Lead Instructor</p>
+                    </button>
+                    <button type="button" onclick="appState.loginWithCustomUser('Dr. Sarah Chen', 's.chen@mit.edu', 'Department Head')" class="p-2.5 rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 text-left transition-colors">
+                        <p class="font-semibold text-slate-800">Dr. Sarah Chen</p>
+                        <p class="text-[10px] text-slate-500 truncate">Department Head</p>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Trust / Privacy note -->
+            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/80 flex items-start gap-2.5 text-[11px] text-slate-600">
+                <i data-lucide="shield-check" class="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5"></i>
+                <span>FERPA & GDPR compliant. We only use your name and email to sync your tests. No third-party data sharing.</span>
+            </div>
+
+            <div class="pt-1 flex justify-center">
+                <button type="button" onclick="appState.closeGoogleAuthModal()" class="text-xs text-slate-500 hover:text-slate-800 underline">Close & Continue as Guest</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== INSTITUTIONAL FOOTER ==================== -->
+    <footer class="mt-auto border-t border-slate-200/90 bg-white/90 backdrop-blur-xs text-slate-600">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 lg:gap-12">
+                
+                <!-- Column 1: Brand & Identity -->
+                <div class="lg:col-span-2 space-y-4">
+                    <div class="flex items-center gap-3">
+                        <img src="assets/icon.png" alt="StudyWise AI" class="w-9 h-9 rounded-xl object-contain ring-1 ring-slate-200 bg-white p-0.5 shadow-xs"/>
+                        <img src="assets/logo_transparent.png" alt="StudyWise AI" class="h-6 w-auto object-contain max-w-[150px]"/>
+                    </div>
+                    <p class="text-xs text-slate-500 leading-relaxed max-w-sm">
+                        StudyWise AI helps educators, teachers, and students create balanced, print-ready examinations and LMS quizzes from any document or topic in seconds.
+                    </p>
+                    <!-- Live System Status Badge -->
+                    <div class="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-800 rounded-full text-[11px] font-semibold border border-emerald-200/80">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span id="footer-status-text">All Systems Operational &bull; API v2.4</span>
+                    </div>
+                </div>
+
+                <!-- Column 2: Generator & Tools -->
+                <div class="space-y-3">
+                    <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Exam Generator</h4>
+                    <ul class="space-y-2 text-xs">
+                        <li><a href="#wizard" onclick="appState.navigateTo('wizard')" class="hover:text-indigo-600 transition-colors">Generate from PDF</a></li>
+                        <li><a href="#wizard" onclick="appState.navigateTo('wizard')" class="hover:text-indigo-600 transition-colors">Topic-based Creation</a></li>
+                        <li><a href="#editor" onclick="appState.navigateTo('editor')" class="hover:text-indigo-600 transition-colors">Question Bank Editor</a></li>
+                        <li><a href="#player" onclick="appState.navigateTo('player')" class="hover:text-indigo-600 transition-colors">Student Exam Simulator</a></li>
+                        <li><a href="#dashboard" onclick="appState.navigateTo('dashboard')" class="hover:text-indigo-600 transition-colors">Assessment Dashboard</a></li>
+                    </ul>
+                </div>
+
+                <!-- Column 3: Formats & LMS -->
+                <div class="space-y-3">
+                    <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Formats & LMS</h4>
+                    <ul class="space-y-2 text-xs">
+                        <li><a href="#export" onclick="appState.navigateTo('export')" class="hover:text-indigo-600 transition-colors">Student & Teacher PDF</a></li>
+                        <li><a href="#export" onclick="appState.navigateTo('export')" class="hover:text-indigo-600 transition-colors">Microsoft Word (.docx)</a></li>
+                        <li><a href="#export" onclick="appState.navigateTo('export')" class="hover:text-indigo-600 transition-colors">Moodle GIFT Format</a></li>
+                        <li><a href="#export" onclick="appState.navigateTo('export')" class="hover:text-indigo-600 transition-colors">Google Forms / CSV</a></li>
+                        <li><a href="#export" onclick="appState.navigateTo('export')" class="hover:text-indigo-600 transition-colors">JSON Assessment Data</a></li>
+                    </ul>
+                </div>
+
+                <!-- Column 4: Trust & Compliance -->
+                <div class="space-y-3">
+                    <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Trust & Security</h4>
+                    <ul class="space-y-2 text-xs">
+                        <li class="flex items-center gap-1.5"><i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-indigo-600"></i><span>FERPA Compliant</span></li>
+                        <li class="flex items-center gap-1.5"><i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-indigo-600"></i><span>GDPR Privacy Ready</span></li>
+                        <li class="flex items-center gap-1.5"><i data-lucide="lock" class="w-3.5 h-3.5 text-indigo-600"></i><span>256-bit SSL Encryption</span></li>
+                        <li class="flex items-center gap-1.5"><i data-lucide="cpu" class="w-3.5 h-3.5 text-indigo-600"></i><span>Private Model Hosting</span></li>
+                        <li><a href="javascript:void(0)" onclick="appState.openSettings()" class="hover:text-indigo-600 transition-colors">Configure AI Providers</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Bottom Bar -->
+            <div class="mt-12 pt-6 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+                <p>&copy; 2026 StudyWise AI. Built for educators, universities, and students.</p>
+                <div class="flex items-center gap-6">
+                    <a href="javascript:void(0)" onclick="appState.showToast('StudyWise Privacy: Zero training retention on user uploads.', 'info')" class="hover:text-slate-800 transition-colors">Privacy Policy</a>
+                    <a href="javascript:void(0)" onclick="appState.showToast('Terms of Service: Academic integrity guidelines apply.', 'info')" class="hover:text-slate-800 transition-colors">Terms of Service</a>
+                    <a href="javascript:void(0)" onclick="appState.openSettings()" class="hover:text-slate-800 transition-colors">Settings</a>
+                    <span class="text-slate-400">Powered by StudyWise Core</span>
+                </div>
+            </div>
+        </div>
+    </footer>
 
     <!-- Toast Notification Container -->
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
